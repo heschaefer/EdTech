@@ -1,4 +1,4 @@
-import { test as base, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { test as base, expect, type APIRequestContext, type APIResponse, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { authenticator } from 'otplib';
 import { dadosEmpresa } from './helpers';
@@ -21,7 +21,7 @@ const MAILPIT = process.env.MAILPIT_URL ?? 'http://localhost:8025';
 export class TestApi {
   constructor(private readonly request: APIRequestContext) {}
 
-  async cenario(opcoes: { areaCurso?: string; areasVaga?: string[]; comCandidatura?: boolean } = {}) {
+  async cenario(opcoes: { areaCurso?: string; areasVaga?: string[]; comCandidatura?: boolean; semestreMinimo?: number } = {}) {
     const res = await this.request.post(`${API}/__test__/cenarios`, { data: opcoes });
     expect(res.ok()).toBeTruthy();
     return (await res.json()) as Cenario;
@@ -88,9 +88,42 @@ export async function semViolacoesGraves(page: Page) {
   expect(graves.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
 }
 
-export const test = base.extend<{ api: TestApi; entrarComo: (conta: { email: string; senha: string; totp?: string }) => Promise<void> }>({
+/** Sessão só de API (outro contexto, cookies próprios), para um segundo ator agir durante o teste. */
+export type SessaoApi = {
+  get: (url: string) => Promise<APIResponse>;
+  post: (url: string, data?: object) => Promise<APIResponse>;
+  patch: (url: string, data?: object) => Promise<APIResponse>;
+  put: (url: string, data?: object) => Promise<APIResponse>;
+  delete: (url: string) => Promise<APIResponse>;
+};
+
+type Fixtures = {
+  api: TestApi;
+  entrarComo: (conta: { email: string; senha: string; totp?: string }) => Promise<void>;
+  sessao: (conta: { email: string; senha: string }) => Promise<SessaoApi>;
+};
+
+export const test = base.extend<Fixtures>({
   api: async ({ request }, use) => {
     await use(new TestApi(request));
+  },
+  sessao: async ({ playwright, baseURL }, use) => {
+    const contextos: APIRequestContext[] = [];
+    await use(async ({ email, senha }) => {
+      const ctx = await playwright.request.newContext({ baseURL });
+      contextos.push(ctx);
+      expect((await ctx.post(`${API}/auth/login`, { data: { email, senha } })).status()).toBe(200);
+      const csrf = (await ctx.storageState()).cookies.find((c) => c.name === 'csrf')!.value;
+      const headers = { 'X-CSRF-Token': csrf };
+      return {
+        get: (url) => ctx.get(API + url),
+        post: (url, data) => ctx.post(API + url, { data, headers }),
+        patch: (url, data) => ctx.patch(API + url, { data, headers }),
+        put: (url, data) => ctx.put(API + url, { data, headers }),
+        delete: (url) => ctx.delete(API + url, { headers }),
+      };
+    });
+    await Promise.all(contextos.map((c) => c.dispose()));
   },
   entrarComo: async ({ page }, use) => {
     await use(async ({ email, senha, totp }) => {

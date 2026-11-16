@@ -16,7 +16,8 @@ export class VagasAlunoService {
     private readonly clock: ClockService,
   ) {}
 
-  private async contexto(usuarioId: string): Promise<AlunoParaVisibilidade & { alunoId: string }> {
+  /** Dados do aluno usados pela RN-08 (também na candidatura, ALU-07). */
+  async contexto(usuarioId: string): Promise<AlunoParaVisibilidade & { alunoId: string }> {
     const a = await this.prisma.aluno.findUnique({
       where: { usuarioId },
       select: { id: true, semestreAtual: true, curso: { select: { areaId: true } }, usuario: { select: { status: true } } },

@@ -14,7 +14,8 @@ describe('Segurança', () => {
   afterAll(() => app.close());
 
   describe('SEG-01 matriz de acesso (cresce a cada fase)', () => {
-    const rotas: { metodo: 'get' | 'post' | 'patch' | 'put'; url: string; permitidos: string[] }[] = [
+    const ID = '00000000-0000-4000-8000-000000000000';
+    const rotas: { metodo: 'get' | 'post' | 'patch' | 'put' | 'delete'; url: string; permitidos: string[] }[] = [
       { metodo: 'get', url: '/me', permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
       { metodo: 'get', url: '/areas', permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
       { metodo: 'get', url: '/admin/faculdades', permitidos: ['ADMIN'] },
@@ -36,6 +37,14 @@ describe('Segurança', () => {
       { metodo: 'get', url: '/empresa/vagas', permitidos: ['EMPRESA'] },
       { metodo: 'post', url: '/empresa/vagas', permitidos: ['EMPRESA'] },
       { metodo: 'get', url: '/admin/empresas', permitidos: ['ADMIN'] },
+      { metodo: 'post', url: `/vagas/${ID}/candidaturas`, permitidos: ['ALUNO'] },
+      { metodo: 'get', url: '/alunos/me/candidaturas', permitidos: ['ALUNO'] },
+      { metodo: 'get', url: `/candidaturas/${ID}`, permitidos: ['ALUNO'] },
+      { metodo: 'delete', url: `/candidaturas/${ID}`, permitidos: ['ALUNO'] },
+      { metodo: 'get', url: `/empresa/vagas/${ID}/candidaturas`, permitidos: ['EMPRESA'] },
+      { metodo: 'get', url: `/empresa/candidaturas/${ID}`, permitidos: ['EMPRESA'] },
+      { metodo: 'patch', url: `/empresa/candidaturas/${ID}/etapa`, permitidos: ['EMPRESA'] },
+      { metodo: 'post', url: `/empresa/candidaturas/${ID}/nao-selecionar`, permitidos: ['EMPRESA'] },
     ];
     const clientes: Record<string, Cliente> = {};
 
@@ -53,7 +62,8 @@ describe('Segurança', () => {
       await request(app.getHttpServer())[metodo](API + url).expect(401);
       for (const papel of ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN']) {
         const res = await clientes[papel][metodo](url, metodo === 'get' ? undefined : {});
-        if (permitidos.includes(papel)) expect([200, 201, 400, 422]).toContain(res.status);
+        // Rota com :id inexistente responde 404 ao papel certo (posse, seção 8.2).
+        if (permitidos.includes(papel)) expect(url.includes(ID) ? [400, 404] : [200, 201, 400, 422]).toContain(res.status);
         else expect(res.status).toBe(403);
       }
     });

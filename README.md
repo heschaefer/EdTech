@@ -13,7 +13,8 @@ Stack: NestJS + Prisma (PostgreSQL) · Next.js 15 + Tailwind v4 · BullMQ (Redis
 | 2 · Faculdade | ✅ FAC-02 (dados cadastrais), FAC-03 (cursos com geração de semestres), FAC-04 (grade de aulas), FAC-05 (turmas) |
 | 3 · Aluno | ✅ ALU-01 (cadastro em 3 passos, CPF cifrado), ALU-02 a ALU-04 (perfil, senha, vínculo, currículo), FAC-06 (lista e desligamento), ALU-12 (troca de faculdade), RN-03 (limpeza de cadastros não verificados no worker) |
 | 4 · Empresa e vagas | ✅ EMP-01 e EMP-02 (cadastro com ViaCEP e perfil), ADM-04 e ADM-05 (aprovação e gestão de empresas), EMP-03 a EMP-07 (criar, editar com versão, pausar, excluir, prorrogar), ALU-05 e ALU-06 (lista com filtros na URL e detalhe). Adiantado da Fase 6: o outbox que envia por e-mail cada notificação in-app (RN-23) |
-| 5 a 7 | Pendentes. Candidaturas, central de notificações, encerramento e jobs de prazo |
+| 5 · Candidaturas | ✅ ALU-07 e ALU-08 (candidatar-se, remover e reinscrever-se), ALU-09 e ALU-10 (em andamento, histórico e linha do tempo), EMP-08 a EMP-10 (lista de candidatos com contagem por etapa, perfil com currículo e auditoria, mover etapa, não selecionar), SEG-02 e SEG-09 |
+| 6 e 7 | Pendentes. Central de notificações, encerramento com devolutiva, jobs de prazo e endurecimento |
 
 `pnpm spec:pendentes` lista quais IDs da spec ainda não têm teste.
 
@@ -95,5 +96,11 @@ docs/spec.md  A spec (lida pelo spec:check)
 - **Filtro de salário (ALU-05):** compara com o máximo da faixa (ou o mínimo, se só ele existir); vagas "a combinar" saem do resultado quando o filtro está ativo.
 - **Selo "Candidatado":** aparece para candidatura em qualquer status, menos cancelada.
 - **Disponibilidade no currículo:** manhã, tarde, noite e integral como múltipla escolha, gravadas separadas por vírgula no campo de texto do schema.
+- **Candidatura repetida (ALU-07):** `POST /vagas/:id/candidaturas` responde 201 quando cria ou reativa e 200 com a mesma candidatura quando ela já está em processo (duplo clique), sem nova notificação. A linha da vaga fica travada (`SELECT … FOR SHARE`) durante a transação, então pausar, encerrar ou expirar esperam a inscrição terminar. Vaga fora da área, abaixo do semestre mínimo ou de empresa inativa responde 404; vaga pausada, vencida ou encerrada, 409.
+- **Candidatura finalizada:** selecionado ou não selecionado não volta a EM_PROCESSO por nova candidatura (409); só a cancelada é reativada (RN-10).
+- **Lista de candidatos (EMP-08):** além de `{ data, meta }`, devolve `etapas` (em processo por etapa), `porStatus` e `opcoes` (cursos e faculdades dos candidatos, para os filtros). O candidato "Aluno inativo" vem só com o nome. Ordem padrão: candidatura mais antiga primeiro (`?ordem=recentes` inverte).
+- **Perfil do candidato (EMP-09):** cada leitura grava `EMPRESA_VIU_PERFIL` na auditoria. Quem não foi selecionado continua com o perfil visível à empresa (RN-19 só esconde a cancelada).
+- **Mover etapa (EMP-10):** pode avançar ou voltar; mover para a etapa atual responde 422. Mover e não selecionar valem com a vaga aberta, pausada ou com prazo expirado. A notificação do não selecionado usa a mensagem genérica da seção 5.
+- **Remover candidatura (ALU-08):** a empresa não é notificada; o candidato só some da lista dela.
 - **E-mails:** templates HTML simples por enquanto; a migração para React Email (seção 10) fica pendente.
 - **spec:check:** lê os títulos dos testes direto dos arquivos (`it`, `test`, `describe`), sem precisar rodar as suítes.

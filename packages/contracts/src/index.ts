@@ -8,3 +8,4 @@ export * from './schemas/faculdade';
 export * from './schemas/aluno';
 export * from './schemas/empresa';
 export * from './schemas/vaga';
+export * from './schemas/candidatura';

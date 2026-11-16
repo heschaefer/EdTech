@@ -16,6 +16,7 @@ import { ManutencaoModule } from './modules/manutencao/manutencao.module';
 import { OutboxModule } from './modules/notificacoes/outbox.module';
 import { EmpresasModule } from './modules/empresas/empresas.module';
 import { VagasModule } from './modules/vagas/vagas.module';
+import { CandidaturasModule } from './modules/candidaturas/candidaturas.module';
 import { AlunosModule } from './modules/alunos/alunos.module';
 import { AreasModule } from './modules/areas/areas.controller';
 import { SaudeModule } from './modules/saude.controller';
@@ -52,6 +53,7 @@ export class AppModule implements OnApplicationShutdown {
         OutboxModule,
         EmpresasModule,
         VagasModule,
+        CandidaturasModule,
         // Seção 8.3 / SEG-08: o módulo /__test__ só existe em NODE_ENV=test com ENABLE_TEST_ROUTES=true.
         ...(rotasDeTesteAtivas() ? [TestingModule] : []),
       ],

@@ -1,11 +1,13 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Cartao } from '@vagas/ui';
+import { Botao, Cartao } from '@vagas/ui';
 import Link from 'next/link';
-import { use, type ReactNode } from 'react';
+import { use, useState, type ReactNode } from 'react';
 import { ROTULOS_VAGA } from '@vagas/contracts';
 import { Aviso } from '@/components/aviso';
+import { Dialogo } from '@/components/dialogo';
+import { useAcao } from '@/lib/acoes';
 import { api } from '@/lib/api';
 import { formatarData, formatarSalario } from '@/lib/formatar';
 
@@ -44,10 +46,13 @@ function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
   );
 }
 
-/** ALU-06 */
+/** ALU-06 (detalhe) e ALU-07 (candidatar-se). */
 export default function VagaAluno({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: v, isError } = useQuery({ queryKey: ['aluno-vaga', id], queryFn: () => api<VagaDetalhe>(`/vagas/${id}`) });
+  const { mensagem, executar } = useAcao(['aluno-vaga', id], ['aluno-vagas'], ['aluno-candidaturas']);
+  const [confirmando, setConfirmando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   if (isError) return <Aviso tipo="erro">Vaga não encontrada ou não disponível para o seu curso.</Aviso>;
   if (!v) return <p>Carregando…</p>;
@@ -83,8 +88,37 @@ export default function VagaAluno({ params }: { params: Promise<{ id: string }> 
           </ol>
         </section>
       </Cartao>
-      {v.candidatura && v.candidatura.status !== 'CANCELADA' && <Aviso tipo="info">Você já se candidatou a esta vaga.</Aviso>}
-      {v.podeCandidatar && <p className="text-sm text-slate-600">A candidatura pela plataforma chega na Fase 5.</p>}
+      {mensagem && <Aviso tipo={mensagem.tipo}>{mensagem.texto}</Aviso>}
+      {v.candidatura && v.candidatura.status !== 'CANCELADA' && (
+        <p className="text-sm text-slate-700">
+          Você se candidatou a esta vaga.{' '}
+          <Link href={`/aluno/candidaturas/${v.candidatura.id}`} className="font-medium text-indigo-700 hover:underline">Acompanhar candidatura</Link>
+        </p>
+      )}
+      {v.podeCandidatar && (
+        <div>
+          <Botao onClick={() => setConfirmando(true)}>{v.candidatura ? 'Candidatar-me de novo' : 'Candidatar-me'}</Botao>
+        </div>
+      )}
+      {confirmando && (
+        <Dialogo
+          titulo="Confirmar candidatura"
+          ocupado={enviando}
+          aoFechar={() => setConfirmando(false)}
+          aoConfirmar={async () => {
+            // Duplo clique: o botão trava enquanto a requisição corre (e a API garante uma só, RN-09).
+            setEnviando(true);
+            await executar(() => api(`/vagas/${id}/candidaturas`, { method: 'POST' }), 'Candidatura enviada', () => setConfirmando(false));
+            setEnviando(false);
+            setConfirmando(false);
+          }}
+        >
+          <p>
+            Candidatar-se a <strong>{v.funcao}</strong> na {v.empresa.nomeFantasia}? A empresa verá seus dados de contato, faculdade, curso, turma,
+            semestre e o seu currículo atual. Você pode remover a candidatura enquanto ela estiver em processo.
+          </p>
+        </Dialogo>
+      )}
     </div>
   );
 }

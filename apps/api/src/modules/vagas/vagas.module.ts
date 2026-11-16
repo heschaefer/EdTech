@@ -6,5 +6,6 @@ import { VagasEmpresaService } from './vagas-empresa.service';
 @Module({
   controllers: [VagasEmpresaController, VagasAlunoController],
   providers: [VagasEmpresaService, VagasAlunoService],
+  exports: [VagasAlunoService],
 })
 export class VagasModule {}

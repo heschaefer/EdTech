@@ -53,7 +53,8 @@ export class VagasEmpresaService {
     });
     if (!v) throw naoEncontrado('Vaga não encontrada');
     const { _count, ...vaga } = v;
-    return { ...apresentarVaga(vaga), jaTeveCandidatura: _count.candidaturas > 0 };
+    const totalCandidatos = _count.candidaturas ? await this.prisma.candidatura.count({ where: { vagaId: id, status: { not: 'CANCELADA' } } }) : 0;
+    return { ...apresentarVaga(vaga), jaTeveCandidatura: _count.candidaturas > 0, totalCandidatos };
   }
 
   /** Posse (seção 8.2): vaga de outra empresa responde 404. */

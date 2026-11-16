@@ -103,7 +103,9 @@ function VagaEmpresa({ id }: { id: string }) {
           <ol className="list-inside list-decimal text-sm">
             {vaga.etapas.map((e) => <li key={e.id}>{e.nome}</li>)}
           </ol>
-          <p className="mt-4 text-sm text-slate-600">A lista de candidatos por etapa chega na Fase 5.</p>
+          <Link href={`/empresa/vagas/${id}/candidatos`} className="mt-4 inline-block font-medium text-indigo-700 hover:underline">
+            Ver candidatos ({vaga.totalCandidatos ?? 0})
+          </Link>
         </Cartao>
       )}
     </div>
