@@ -11,7 +11,8 @@ Stack: NestJS + Prisma (PostgreSQL) · Next.js 15 + Tailwind v4 · BullMQ (Redis
 | 0 · Fundação | ✅ Monorepo, Docker Compose (dev e teste), schema Prisma e 1ª migração, seed base, CI, `ClockService`, problem+json, helmet, `/__test__`, `spec:check` |
 | 1 · Autenticação e admin | ✅ AUTH-01 a AUTH-05, CSRF, rate limit, bloqueio, 2FA TOTP do admin, guards de papel, middleware do Next, ADM-01 a ADM-03, FAC-01 (aceite do convite), SEG-01 (parcial) e SEG-03 a SEG-08, SEG-10 |
 | 2 · Faculdade | ✅ FAC-02 (dados cadastrais), FAC-03 (cursos com geração de semestres), FAC-04 (grade de aulas), FAC-05 (turmas) |
-| 3 a 7 | Pendentes. Os painéis de aluno e empresa e a lista de alunos da faculdade (FAC-06, Fase 3) mostram "Em construção" |
+| 3 · Aluno | ✅ ALU-01 (cadastro em 3 passos, CPF cifrado), ALU-02 a ALU-04 (perfil, senha, vínculo, currículo), FAC-06 (lista e desligamento), ALU-12 (troca de faculdade), RN-03 (limpeza de cadastros não verificados no worker) |
+| 4 a 7 | Pendentes. Vagas, candidaturas e o painel da empresa mostram "Em construção" |
 
 `pnpm spec:pendentes` lista quais IDs da spec ainda não têm teste.
 
@@ -83,6 +84,10 @@ docs/spec.md  A spec (lida pelo spec:check)
 - **Prazo na candidatura:** além da RN-08, a listagem e a candidatura exigem `prazo > agora` (RN-12), para a vaga não aceitar inscrição no intervalo de até 5 min antes do JOB-01 rodar.
 - **Login:** conta bloqueada e e-mail não verificado respondem 401 com `type` próprio (`conta-bloqueada`, `email-nao-verificado`) só depois da senha correta, no caso do e-mail não verificado; e-mail inexistente e senha errada têm a mesma mensagem e o mesmo tempo de resposta.
 - **TOTP:** aceita o código do passo anterior ou seguinte (±30 s).
-- **Rotas extras:** `DELETE /admin/areas/:id` (ADM-03 fala em excluir área sem uso) e `POST /__test__/admins` (admin único por teste E2E, para isolar o rate limit de login). As rotas `/__test__` ficam fora do rate limit.
+- **Rotas extras:** `DELETE /admin/areas/:id` (ADM-03 fala em excluir área sem uso); `GET /alunos/me/vinculo/opcoes` (cursos e turmas da própria faculdade para o ALU-03); `GET /alunos/me/troca-faculdade?token=` e `POST /alunos/me/troca-faculdade/confirmar` (as duas metades do ALU-12: ler o pedido e confirmar com o vínculo novo); `POST /__test__/admins` (admin único por teste E2E). A lista de faculdades do admin aceita `?q=` (nome, CNPJ ou domínio). As rotas `/__test__` ficam fora do rate limit.
+- **Rate limit no E2E:** `RATE_LIMIT_FATOR` (padrão 1) multiplica só os limites por IP; o compose de teste usa 100 porque todos os testes saem do mesmo IP. Os limites por e-mail (login, esqueci a senha) não mudam, e o SEG-05 continua valendo.
+- **Troca de faculdade (ALU-12):** exige e-mail de **outra** faculdade cliente, para um aluno desligado não se reativar com outro e-mail da mesma faculdade. Ao confirmar, o e-mail de login passa a ser o novo.
+- **Desligamento (FAC-06):** o motivo vai para a auditoria (`FACULDADE_DESLIGOU_ALUNO`). Reativar não restaura as candidaturas canceladas.
+- **Disponibilidade no currículo:** manhã, tarde, noite e integral como múltipla escolha, gravadas separadas por vírgula no campo de texto do schema.
 - **E-mails:** templates HTML simples por enquanto; a migração para React Email (seção 10) fica pendente.
 - **spec:check:** lê os títulos dos testes direto dos arquivos (`it`, `test`, `describe`), sem precisar rodar as suítes.

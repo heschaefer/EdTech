@@ -102,7 +102,8 @@ export class AuthService {
     }
   }
 
-  private async abrirSessao(usuario: Pick<Usuario, 'id' | 'papel' | 'status'>, familia: string): Promise<Sessao> {
+  /** Abre uma sessão nova (nova família de refresh tokens). */
+  async abrirSessao(usuario: Pick<Usuario, 'id' | 'papel' | 'status'>, familia: string = randomUUID()): Promise<Sessao> {
     const refresh = gerarTokenOpaco();
     await this.prisma.refreshToken.create({
       data: {

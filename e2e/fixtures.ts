@@ -5,7 +5,7 @@ import { authenticator } from 'otplib';
 const API = '/api/v1';
 type Conta = { id: string; email: string; senha: string };
 export type Cenario = {
-  aluno: Conta & { nome: string };
+  aluno: Conta & { nome: string; cpf: string };
   empresa: Conta;
   faculdade: Conta & { dominio: string };
   curso: { id: string; nome: string };

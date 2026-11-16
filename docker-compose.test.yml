@@ -4,6 +4,8 @@ name: vagas-test
 x-app-env: &app-env
   NODE_ENV: test
   ENABLE_TEST_ROUTES: "true"
+  # Todos os testes saem do mesmo IP; os limites por e-mail (login, SEG-05) não mudam.
+  RATE_LIMIT_FATOR: "100"
   DATABASE_URL: postgresql://vagas:vagas@postgres:5432/vagas_test?schema=public
   REDIS_URL: redis://redis:6379
   WEB_URL: http://localhost:3000

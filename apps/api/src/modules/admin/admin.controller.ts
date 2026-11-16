@@ -5,7 +5,7 @@ import {
   criarAreaSchema,
   criarFaculdadeSchema,
   dominioInputSchema,
-  paginacaoSchema,
+  filtroFaculdadesSchema,
 } from '@vagas/contracts';
 import type { Request } from 'express';
 import { createZodDto } from 'nestjs-zod';
@@ -19,7 +19,7 @@ class AtualizarFaculdadeDto extends createZodDto(atualizarFaculdadeAdminSchema) 
 class DominioDto extends createZodDto(dominioInputSchema) {}
 class CriarAreaDto extends createZodDto(criarAreaSchema) {}
 class AtualizarAreaDto extends createZodDto(atualizarAreaSchema) {}
-class PaginacaoDto extends createZodDto(paginacaoSchema) {}
+class FiltroFaculdadesDto extends createZodDto(filtroFaculdadesSchema) {}
 
 const ator = (u: UsuarioSessao, req: Request) => ({ id: u.id, ip: req.ip });
 
@@ -33,7 +33,7 @@ export class AdminController {
 
   // ---------- ADM-01 / ADM-02 ----------
   @Get('faculdades')
-  listarFaculdades(@Query() q: PaginacaoDto) {
+  listarFaculdades(@Query() q: FiltroFaculdadesDto) {
     return this.faculdades.listar(q);
   }
 

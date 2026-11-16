@@ -38,3 +38,12 @@ export function reordenar<T extends { id: string }>(itens: T[], id: string, nova
   lista.splice(destino, 0, item);
   return lista.map((i, idx) => ({ ...i, ordem: idx + 1 }));
 }
+
+/**
+ * ALU-04: previsão de conclusão = turma (ano/período de ingresso) + duração do curso.
+ * Ex.: ingresso 2025/1 em curso de 4 anos → último semestre 2028/2.
+ */
+export function previsaoConclusao(anoIngresso: number, periodoIngresso: number, duracaoAnos: number) {
+  const indice = anoIngresso * SEMESTRES_POR_ANO + (periodoIngresso - 1) + totalSemestres(duracaoAnos) - 1;
+  return { ano: Math.floor(indice / SEMESTRES_POR_ANO), periodo: (indice % SEMESTRES_POR_ANO) + 1 };
+}

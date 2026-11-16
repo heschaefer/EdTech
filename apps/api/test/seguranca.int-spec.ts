@@ -14,7 +14,7 @@ describe('Segurança', () => {
   afterAll(() => app.close());
 
   describe('SEG-01 matriz de acesso (cresce a cada fase)', () => {
-    const rotas: { metodo: 'get' | 'post' | 'patch'; url: string; permitidos: string[] }[] = [
+    const rotas: { metodo: 'get' | 'post' | 'patch' | 'put'; url: string; permitidos: string[] }[] = [
       { metodo: 'get', url: '/me', permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
       { metodo: 'get', url: '/areas', permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
       { metodo: 'get', url: '/admin/faculdades', permitidos: ['ADMIN'] },
@@ -25,6 +25,12 @@ describe('Segurança', () => {
       { metodo: 'patch', url: '/faculdade/me', permitidos: ['FACULDADE'] },
       { metodo: 'get', url: '/faculdade/cursos', permitidos: ['FACULDADE'] },
       { metodo: 'post', url: '/faculdade/cursos', permitidos: ['FACULDADE'] },
+      { metodo: 'get', url: '/faculdade/alunos', permitidos: ['FACULDADE'] },
+      { metodo: 'get', url: '/alunos/me', permitidos: ['ALUNO'] },
+      { metodo: 'patch', url: '/alunos/me', permitidos: ['ALUNO'] },
+      { metodo: 'patch', url: '/alunos/me/vinculo', permitidos: ['ALUNO'] },
+      { metodo: 'get', url: '/alunos/me/curriculo', permitidos: ['ALUNO'] },
+      { metodo: 'post', url: '/alunos/me/troca-faculdade', permitidos: ['ALUNO'] },
     ];
     const clientes: Record<string, Cliente> = {};
 

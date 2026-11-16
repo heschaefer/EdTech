@@ -29,6 +29,8 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  /** Multiplica os limites por IP (só o compose de E2E muda, porque todos os testes saem do mesmo IP). */
+  RATE_LIMIT_FATOR: z.coerce.number().int().min(1).default(1),
   /** Desliga o rate limit (só para testes de integração que não o exercitam). */
   THROTTLE_DESLIGADO: z
     .enum(['true', 'false'])

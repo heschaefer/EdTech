@@ -12,7 +12,13 @@ const CHAVE_LIMITE = 'chave-limite';
  * Sem o decorator vale o padrão de 100/min por usuário (ou IP, se anônimo).
  */
 export const Limite = (limite: number, ttlMs: number, chave: ChaveLimite) =>
-  applyDecorators(Throttle({ default: { limit: limite, ttl: ttlMs } }), SetMetadata(CHAVE_LIMITE, chave));
+  applyDecorators(
+    Throttle({ default: { limit: chave === 'ip' ? () => limite * env().RATE_LIMIT_FATOR : limite, ttl: ttlMs } }),
+    SetMetadata(CHAVE_LIMITE, chave),
+  );
+
+/** Padrão da seção 8.3: 100/min por usuário (ou IP, se anônimo). */
+export const limitePadrao = () => 100 * env().RATE_LIMIT_FATOR;
 
 @Injectable()
 export class LimiteGuard extends ThrottlerGuard {

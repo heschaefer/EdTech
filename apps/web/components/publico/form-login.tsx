@@ -87,6 +87,9 @@ export function FormLogin() {
         <Link href="/senha/esqueci" className="text-indigo-700 hover:underline">
           Esqueci a senha
         </Link>
+        <Link href="/cadastro/aluno" className="text-indigo-700 hover:underline">
+          Sou aluno e quero criar minha conta
+        </Link>
       </div>
     </Cartao>
   );

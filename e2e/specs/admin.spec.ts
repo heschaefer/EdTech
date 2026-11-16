@@ -24,7 +24,7 @@ test.describe('Admin @admin', () => {
     await page.goto('/admin/faculdades');
     await semViolacoesGraves(page);
     await page.getByRole('button', { name: 'Nova faculdade' }).click();
-    await page.getByLabel('CNPJ').fill(cnpjValido());
+    await page.getByLabel('CNPJ', { exact: true }).fill(cnpjValido());
     await page.getByLabel('Razão social').fill(`Universidade ${s} S.A.`);
     await page.getByLabel('Nome fantasia').fill(`Uni ${s}`);
     await page.getByLabel('Telefone').fill('(11) 3333-4444');
@@ -32,6 +32,7 @@ test.describe('Admin @admin', () => {
     await page.getByLabel('Domínios estudantis').fill(`aluno.uni${s}.edu.br`);
     await page.getByRole('button', { name: 'Criar e enviar convite' }).click();
     await expect(page.getByRole('status')).toContainText(`o convite foi enviado para ${email}`);
+    await page.getByLabel('Buscar por nome, CNPJ ou domínio').fill(`Uni ${s}`);
     await expect(page.getByRole('row', { name: new RegExp(`Uni ${s}`) })).toContainText('Convite pendente');
 
     // FAC-01: a faculdade abre o link do convite em outro navegador.
@@ -47,7 +48,7 @@ test.describe('Admin @admin', () => {
   test('ADM-01 domínio de provedor público é recusado no campo', async ({ page }) => {
     await page.goto('/admin/faculdades');
     await page.getByRole('button', { name: 'Nova faculdade' }).click();
-    await page.getByLabel('CNPJ').fill(cnpjValido());
+    await page.getByLabel('CNPJ', { exact: true }).fill(cnpjValido());
     await page.getByLabel('Razão social').fill('Uni Gmail');
     await page.getByLabel('Nome fantasia').fill('Uni Gmail');
     await page.getByLabel('Telefone').fill('1133334444');
@@ -60,6 +61,7 @@ test.describe('Admin @admin', () => {
   test('ADM-02 inativa e reativa a faculdade; domínios são geridos na ficha', async ({ page, api, request }) => {
     const c = await api.cenario();
     await page.goto('/admin/faculdades');
+    await page.getByLabel('Buscar por nome, CNPJ ou domínio').fill(c.faculdade.dominio);
     const linha = page.getByRole('row', { name: new RegExp(c.faculdade.dominio.replace(/\./g, '\\.')) });
     await linha.getByRole('link').click();
     await semViolacoesGraves(page);

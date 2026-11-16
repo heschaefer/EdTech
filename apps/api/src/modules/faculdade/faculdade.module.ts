@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AlunosFaculdadeService } from './alunos-faculdade.service';
 import { CursosService } from './cursos.service';
 import { FaculdadeController } from './faculdade.controller';
 import { FaculdadeAtualService } from './faculdade-atual.service';
@@ -8,6 +9,6 @@ import { TurmasService } from './turmas.service';
 
 @Module({
   controllers: [FaculdadeController],
-  providers: [FaculdadeAtualService, PerfilFaculdadeService, CursosService, GradeService, TurmasService],
+  providers: [AlunosFaculdadeService, FaculdadeAtualService, PerfilFaculdadeService, CursosService, GradeService, TurmasService],
 })
 export class FaculdadeModule {}

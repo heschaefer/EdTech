@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import {
   atualizarAulaSchema,
   atualizarCursoSchema,
@@ -7,10 +7,14 @@ import {
   criarAulaSchema,
   criarCursoSchema,
   criarTurmaSchema,
+  filtroAlunosSchema,
+  statusAlunoSchema,
 } from '@vagas/contracts';
+import type { Request } from 'express';
 import { createZodDto } from 'nestjs-zod';
 import { Roles, UsuarioAtual } from '../../common/decorators';
 import type { UsuarioSessao } from '../../common/sessao';
+import { AlunosFaculdadeService } from './alunos-faculdade.service';
 import { CursosService } from './cursos.service';
 import { FaculdadeAtualService } from './faculdade-atual.service';
 import { GradeService } from './grade.service';
@@ -24,6 +28,8 @@ class CriarAulaDto extends createZodDto(criarAulaSchema) {}
 class AtualizarAulaDto extends createZodDto(atualizarAulaSchema) {}
 class CriarTurmaDto extends createZodDto(criarTurmaSchema) {}
 class AtualizarTurmaDto extends createZodDto(atualizarTurmaSchema) {}
+class FiltroAlunosDto extends createZodDto(filtroAlunosSchema) {}
+class StatusAlunoDto extends createZodDto(statusAlunoSchema) {}
 
 const Id = (nome = 'id') => Param(nome, ParseUUIDPipe);
 
@@ -36,6 +42,7 @@ export class FaculdadeController {
     private readonly cursos: CursosService,
     private readonly grade: GradeService,
     private readonly turmas: TurmasService,
+    private readonly alunos: AlunosFaculdadeService,
   ) {}
 
   // ---------- FAC-02 ----------
@@ -118,5 +125,16 @@ export class FaculdadeController {
   @HttpCode(204)
   async excluirTurma(@UsuarioAtual() u: UsuarioSessao, @Id() id: string) {
     await this.turmas.excluir(await this.atual.id(u.id), id);
+  }
+
+  // ---------- FAC-06 ----------
+  @Get('alunos')
+  async listarAlunos(@UsuarioAtual() u: UsuarioSessao, @Query() q: FiltroAlunosDto) {
+    return this.alunos.listar(await this.atual.id(u.id), q);
+  }
+
+  @Patch('alunos/:id/status')
+  async statusAluno(@UsuarioAtual() u: UsuarioSessao, @Id() id: string, @Body() dto: StatusAlunoDto, @Req() req: Request) {
+    return this.alunos.alterarStatus(await this.atual.id(u.id), id, dto, { id: u.id, ip: req.ip });
   }
 }

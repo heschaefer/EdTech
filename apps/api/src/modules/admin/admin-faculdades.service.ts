@@ -1,5 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import type { CriarFaculdadeInput, Paginacao } from '@vagas/contracts';
+import type { CriarFaculdadeInput } from '@vagas/contracts';
+import type { Prisma } from '@prisma/client';
 import type { z } from 'zod';
 import type { atualizarFaculdadeAdminSchema } from '@vagas/contracts';
 import { ClockService } from '../../common/clock.service';
@@ -40,10 +41,21 @@ export class AdminFaculdadesService {
     private readonly inativacao: InativacaoAlunosService,
   ) {}
 
-  async listar({ page, pageSize }: Paginacao) {
+  async listar({ q, page, pageSize }: { q?: string; page: number; pageSize: number }) {
+    const digitos = q?.replace(/\D/g, '');
+    const where: Prisma.FaculdadeWhereInput = q
+      ? {
+          OR: [
+            { nomeFantasia: { contains: q, mode: 'insensitive' } },
+            { razaoSocial: { contains: q, mode: 'insensitive' } },
+            { dominios: { some: { dominio: { contains: q.toLowerCase() } } } },
+            ...(digitos && digitos.length >= 3 ? [{ cnpj: { contains: digitos } }] : []),
+          ],
+        }
+      : {};
     const [total, linhas] = await this.prisma.$transaction([
-      this.prisma.faculdade.count(),
-      this.prisma.faculdade.findMany({ select: SELECT_FACULDADE, orderBy: { nomeFantasia: 'asc' }, skip: (page - 1) * pageSize, take: pageSize }),
+      this.prisma.faculdade.count({ where }),
+      this.prisma.faculdade.findMany({ where, select: SELECT_FACULDADE, orderBy: { nomeFantasia: 'asc' }, skip: (page - 1) * pageSize, take: pageSize }),
     ]);
     return { data: linhas.map(apresentar), meta: { page, pageSize, total } };
   }

@@ -7,11 +7,12 @@ import { rotasDeTesteAtivas } from './config/env';
 import { ProblemFilter } from './common/filters/problem.filter';
 import { CsrfGuard } from './common/guards/csrf.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
-import { LimiteGuard } from './common/guards/limite.guard';
+import { LimiteGuard, limitePadrao } from './common/guards/limite.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { conexaoRedis } from './modules/email/redis';
 import { AdminModule } from './modules/admin/admin.module';
 import { FaculdadeModule } from './modules/faculdade/faculdade.module';
+import { ManutencaoModule } from './modules/manutencao/manutencao.module';
 import { AlunosModule } from './modules/alunos/alunos.module';
 import { AreasModule } from './modules/areas/areas.controller';
 import { SaudeModule } from './modules/saude.controller';
@@ -35,7 +36,7 @@ export class AppModule implements OnApplicationShutdown {
         CompartilhadoModule,
         ThrottlerModule.forRoot({
           // Padrão (seção 8.3): 100/min por usuário; rotas sensíveis sobrescrevem com @Limite().
-          throttlers: [{ name: 'default', limit: 100, ttl: 60_000 }],
+          throttlers: [{ name: 'default', limit: limitePadrao, ttl: 60_000 }],
           storage: new ThrottlerStorageRedisService(redis),
         }),
         SaudeModule,
@@ -44,6 +45,7 @@ export class AppModule implements OnApplicationShutdown {
         AreasModule,
         AdminModule,
         FaculdadeModule,
+        ManutencaoModule,
         // Seção 8.3 / SEG-08: o módulo /__test__ só existe em NODE_ENV=test com ENABLE_TEST_ROUTES=true.
         ...(rotasDeTesteAtivas() ? [TestingModule] : []),
       ],

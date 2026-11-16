@@ -46,6 +46,9 @@ export class Cliente {
   patch(url: string, body?: object) {
     return this.agent.patch(API + url).set('X-CSRF-Token', this.csrf()).send(body);
   }
+  put(url: string, body?: object) {
+    return this.agent.put(API + url).set('X-CSRF-Token', this.csrf()).send(body);
+  }
   delete(url: string, body?: object) {
     return this.agent.delete(API + url).set('X-CSRF-Token', this.csrf()).send(body);
   }

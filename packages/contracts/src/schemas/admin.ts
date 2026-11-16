@@ -42,6 +42,15 @@ export const atualizarFaculdadeAdminSchema = z
   })
   .strict();
 
+/** ADM-01: lista com busca por nome, CNPJ ou domínio. */
+export const filtroFaculdadesSchema = z
+  .object({
+    q: z.string().trim().max(100).optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .strict();
+
 export const dominioInputSchema = z.object({ dominio: dominioSchema }).strict();
 
 export const criarAreaSchema = z.object({ nome: textoCurto }).strict();

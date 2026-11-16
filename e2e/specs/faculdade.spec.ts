@@ -110,3 +110,29 @@ test.describe('Faculdade @faculdade', () => {
     await expect(page.getByRole('row', { name: /2026\/2/ })).toHaveCount(0);
   });
 });
+
+test.describe('Alunos da faculdade @faculdade', () => {
+  test('FAC-06 lista com CPF mascarado, desliga com motivo e reativa', async ({ page, api, entrarComo }) => {
+    const { faculdade, aluno } = await api.cenario({ comCandidatura: true });
+    await entrarComo(faculdade);
+    await page.goto('/faculdade/alunos');
+    await semViolacoesGraves(page);
+    const linha = page.getByRole('row', { name: new RegExp(aluno.nome) });
+    await expect(linha).toContainText(/\*\*\*\.\d{3}\.\d{3}-\*\*/);
+    await expect(linha).toContainText('Ativo');
+
+    await linha.getByRole('button', { name: `Desligar ${aluno.nome}` }).click();
+    const dialogo = page.getByRole('dialog');
+    await expect(dialogo.getByRole('button', { name: 'Confirmar desligamento' })).toBeDisabled();
+    await dialogo.getByLabel('Motivo do desligamento').fill('Trancou a matrícula');
+    await dialogo.getByRole('button', { name: 'Confirmar desligamento' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'foi desligado(a)' })).toBeVisible();
+    await expect(linha).toContainText('Inativo');
+
+    await page.getByLabel('Situação').selectOption('INATIVO');
+    await expect(page.getByRole('row', { name: new RegExp(aluno.nome) })).toBeVisible();
+
+    await linha.getByRole('button', { name: `Reativar ${aluno.nome}` }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'foi reativado(a)' })).toBeVisible();
+  });
+});

@@ -57,10 +57,16 @@ describe('Admin', () => {
       expect(usado.body.errors[0].campo).toBe('dominios.0');
     });
 
-    it('ADM-01 lista as faculdades paginadas', async () => {
+    it('ADM-01 lista as faculdades paginadas, com busca por nome, CNPJ ou domínio', async () => {
       const res = await admin.get('/admin/faculdades?page=1&pageSize=2').expect(200);
       expect(res.body.meta).toMatchObject({ page: 1, pageSize: 2 });
       expect(res.body.data.length).toBeLessThanOrEqual(2);
+      const dados = novaFaculdade();
+      await admin.post('/admin/faculdades', dados).expect(201);
+      for (const q of [dados.nomeFantasia, dados.cnpj, dados.dominios[0]]) {
+        const r = (await admin.get(`/admin/faculdades?q=${encodeURIComponent(q)}`).expect(200)).body;
+        expect(r.data.map((f: { email: string }) => f.email)).toEqual([dados.email]);
+      }
     });
   });
 

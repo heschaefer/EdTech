@@ -30,6 +30,13 @@ export class TokensEmailService {
     return token;
   }
 
+  /** Lê sem consumir (ex.: mostrar o formulário antes de confirmar). */
+  async ler(token: string, tipo: TipoTokenEmail) {
+    const registro = await this.prisma.tokenEmail.findUnique({ where: { tokenHash: sha256(token) } });
+    if (!registro || registro.tipo !== tipo || registro.usadoEm || registro.expiraEm <= this.clock.agora()) return null;
+    return registro;
+  }
+
   /**
    * Consome o token uma única vez (UPDATE condicional): duas requisições simultâneas
    * com o mesmo link nunca passam ambas. Devolve null se inválido, usado ou expirado.

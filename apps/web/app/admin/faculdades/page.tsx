@@ -21,10 +21,14 @@ type Form = z.input<typeof formSchema>;
 export default function FaculdadesAdmin() {
   const qc = useQueryClient();
   const [pagina, setPagina] = useState(1);
+  const [busca, setBusca] = useState('');
   const [abrirForm, setAbrirForm] = useState(false);
   const [aviso, setAviso] = useState('');
   const [erro, setErro] = useState('');
-  const lista = useQuery({ queryKey: ['admin-faculdades', pagina], queryFn: () => api<Pagina<Faculdade>>(`/admin/faculdades?page=${pagina}&pageSize=20`) });
+  const lista = useQuery({
+    queryKey: ['admin-faculdades', pagina, busca],
+    queryFn: () => api<Pagina<Faculdade>>(`/admin/faculdades?page=${pagina}&pageSize=20${busca ? `&q=${encodeURIComponent(busca)}` : ''}`),
+  });
   const { register, handleSubmit, setError, reset, formState } = useForm<Form>({ resolver: zodResolver(formSchema) });
 
   const criar = useMutation({
@@ -72,6 +76,10 @@ export default function FaculdadesAdmin() {
           </form>
         </Cartao>
       )}
+
+      <form role="search" className="max-w-sm" onSubmit={(e) => e.preventDefault()}>
+        <Campo rotulo="Buscar por nome, CNPJ ou domínio" value={busca} onChange={(e) => (setBusca(e.target.value), setPagina(1))} />
+      </form>
 
       <Cartao className="overflow-x-auto p-0">
         <table className="w-full text-left text-sm">

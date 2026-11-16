@@ -1,4 +1,4 @@
-import { gerarSemestres, reducaoPermitida, reordenar, semestreValido, totalSemestres } from './cursos';
+import { gerarSemestres, previsaoConclusao, reducaoPermitida, reordenar, semestreValido, totalSemestres } from './cursos';
 
 describe('Cursos e grade', () => {
   it('FAC-03 D13 gera 2 semestres por ano de duração', () => {
@@ -32,5 +32,13 @@ describe('Cursos e grade', () => {
     expect(reordenar(aulas, 'a', 99).map((a) => `${a.id}${a.ordem}`)).toEqual(['b1', 'c2', 'a3']);
     expect(reordenar(aulas, 'b', 0).map((a) => a.id)).toEqual(['b', 'a', 'c']);
     expect(() => reordenar(aulas, 'x', 1)).toThrow();
+  });
+});
+
+describe('Previsão de conclusão', () => {
+  it('ALU-04 soma a duração à turma de ingresso', () => {
+    expect(previsaoConclusao(2025, 1, 4)).toEqual({ ano: 2028, periodo: 2 });
+    expect(previsaoConclusao(2025, 2, 4)).toEqual({ ano: 2029, periodo: 1 });
+    expect(previsaoConclusao(2026, 1, 1)).toEqual({ ano: 2026, periodo: 2 });
   });
 });
