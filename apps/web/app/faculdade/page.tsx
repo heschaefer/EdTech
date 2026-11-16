@@ -1,5 +1,5 @@
-import { EmConstrucao } from '@/components/painel';
+import { redirect } from 'next/navigation';
 
 export default function InicioFaculdade() {
-  return <EmConstrucao fase={2} oQue="O painel da faculdade" />;
+  redirect('/faculdade/cursos');
 }

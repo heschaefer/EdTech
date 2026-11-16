@@ -4,3 +4,4 @@ export * from './mensagens';
 export * from './schemas/comum';
 export * from './schemas/auth';
 export * from './schemas/admin';
+export * from './schemas/faculdade';

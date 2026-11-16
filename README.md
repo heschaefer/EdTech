@@ -10,7 +10,8 @@ Stack: NestJS + Prisma (PostgreSQL) · Next.js 15 + Tailwind v4 · BullMQ (Redis
 | --- | --- |
 | 0 · Fundação | ✅ Monorepo, Docker Compose (dev e teste), schema Prisma e 1ª migração, seed base, CI, `ClockService`, problem+json, helmet, `/__test__`, `spec:check` |
 | 1 · Autenticação e admin | ✅ AUTH-01 a AUTH-05, CSRF, rate limit, bloqueio, 2FA TOTP do admin, guards de papel, middleware do Next, ADM-01 a ADM-03, FAC-01 (aceite do convite), SEG-01 (parcial) e SEG-03 a SEG-08, SEG-10 |
-| 2 a 7 | Pendentes. Os painéis de aluno, empresa e faculdade mostram "Em construção" |
+| 2 · Faculdade | ✅ FAC-02 (dados cadastrais), FAC-03 (cursos com geração de semestres), FAC-04 (grade de aulas), FAC-05 (turmas) |
+| 3 a 7 | Pendentes. Os painéis de aluno e empresa e a lista de alunos da faculdade (FAC-06, Fase 3) mostram "Em construção" |
 
 `pnpm spec:pendentes` lista quais IDs da spec ainda não têm teste.
 

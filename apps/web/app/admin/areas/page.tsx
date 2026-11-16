@@ -1,31 +1,19 @@
 'use client';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Botao, Campo, Cartao } from '@vagas/ui';
 import { useState } from 'react';
 import { Aviso } from '@/components/aviso';
 import type { Area } from '@/components/admin/tipos';
-import { api, ErroApi } from '@/lib/api';
+import { useAcao } from '@/lib/acoes';
+import { api } from '@/lib/api';
 
 /** ADM-03: criar, renomear, inativar; área em uso não pode ser excluída. */
 export default function AreasAdmin() {
-  const qc = useQueryClient();
   const { data: areas } = useQuery({ queryKey: ['admin-areas'], queryFn: () => api<Area[]>('/admin/areas') });
   const [nome, setNome] = useState('');
   const [editando, setEditando] = useState<{ id: string; nome: string } | null>(null);
-  const [mensagem, setMensagem] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
-
-  const executar = async (fn: () => Promise<unknown>, sucesso: string) => {
-    try {
-      await fn();
-      setMensagem({ tipo: 'sucesso', texto: sucesso });
-      await qc.invalidateQueries({ queryKey: ['admin-areas'] });
-      return true;
-    } catch (e) {
-      setMensagem({ tipo: 'erro', texto: e instanceof ErroApi ? e.problema.errors?.[0]?.mensagem ?? e.message : 'Falha na operação' });
-      return false;
-    }
-  };
+  const { mensagem, executar } = useAcao(['admin-areas']);
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,7 +24,7 @@ export default function AreasAdmin() {
           className="flex flex-wrap items-end gap-3"
           onSubmit={async (e) => {
             e.preventDefault();
-            if (await executar(() => api('/admin/areas', { method: 'POST', corpo: { nome } }), `Área ${nome} criada.`)) setNome('');
+            await executar(() => api('/admin/areas', { method: 'POST', corpo: { nome } }), `Área ${nome} criada.`, () => setNome(''));
           }}
         >
           <div className="grow">
@@ -68,7 +56,7 @@ export default function AreasAdmin() {
                       className="flex gap-2"
                       onSubmit={async (e) => {
                         e.preventDefault();
-                        if (await executar(() => api(`/admin/areas/${a.id}`, { method: 'PATCH', corpo: { nome: editando.nome } }), 'Área renomeada.')) setEditando(null);
+                        await executar(() => api(`/admin/areas/${a.id}`, { method: 'PATCH', corpo: { nome: editando.nome } }), 'Área renomeada.', () => setEditando(null));
                       }}
                     >
                       <label className="sr-only" htmlFor={`nome-${a.id}`}>Novo nome</label>

@@ -8,6 +8,8 @@ export type Cenario = {
   aluno: Conta & { nome: string };
   empresa: Conta;
   faculdade: Conta & { dominio: string };
+  curso: { id: string; nome: string };
+  turma: { id: string };
   vaga: { id: string; funcao: string; prazo: string };
   candidaturaId?: string;
 };

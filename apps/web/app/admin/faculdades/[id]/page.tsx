@@ -1,30 +1,21 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Botao, Campo, Cartao } from '@vagas/ui';
 import Link from 'next/link';
 import { use, useState } from 'react';
 import { Aviso } from '@/components/aviso';
 import { formatarCnpj, type Faculdade } from '@/components/admin/tipos';
-import { api, ErroApi } from '@/lib/api';
+import { useAcao } from '@/lib/acoes';
+import { api } from '@/lib/api';
 
 /** ADM-02: domínios, convite e inativação (D19, RN-27). */
 export default function FaculdadeAdmin({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const qc = useQueryClient();
   const [novoDominio, setNovoDominio] = useState('');
-  const [mensagem, setMensagem] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
   const chave = ['admin-faculdade', id];
   const { data: f, isLoading } = useQuery({ queryKey: chave, queryFn: () => api<Faculdade>(`/admin/faculdades/${id}`) });
-
-  const acao = (fn: () => Promise<unknown>, sucesso: string) =>
-    fn()
-      .then(() => {
-        setMensagem({ tipo: 'sucesso', texto: sucesso });
-        qc.invalidateQueries({ queryKey: chave });
-        qc.invalidateQueries({ queryKey: ['admin-faculdades'] });
-      })
-      .catch((e) => setMensagem({ tipo: 'erro', texto: e instanceof ErroApi ? e.problema.errors?.[0]?.mensagem ?? e.message : 'Falha na operação' }));
+  const { mensagem, executar: acao } = useAcao(chave, ['admin-faculdades']);
 
   const alternar = useMutation({
     mutationFn: async () => {
@@ -80,7 +71,7 @@ export default function FaculdadeAdmin({ params }: { params: Promise<{ id: strin
           className="flex flex-wrap items-end gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            acao(() => api(`/admin/faculdades/${id}/dominios`, { method: 'POST', corpo: { dominio: novoDominio } }), `Domínio ${novoDominio} adicionado.`).then(() => setNovoDominio(''));
+            acao(() => api(`/admin/faculdades/${id}/dominios`, { method: 'POST', corpo: { dominio: novoDominio } }), `Domínio ${novoDominio} adicionado.`, () => setNovoDominio(''));
           }}
         >
           <div className="grow">

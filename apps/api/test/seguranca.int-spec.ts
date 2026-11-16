@@ -21,6 +21,10 @@ describe('Segurança', () => {
       { metodo: 'post', url: '/admin/faculdades', permitidos: ['ADMIN'] },
       { metodo: 'get', url: '/admin/areas', permitidos: ['ADMIN'] },
       { metodo: 'post', url: '/admin/areas', permitidos: ['ADMIN'] },
+      { metodo: 'get', url: '/faculdade/me', permitidos: ['FACULDADE'] },
+      { metodo: 'patch', url: '/faculdade/me', permitidos: ['FACULDADE'] },
+      { metodo: 'get', url: '/faculdade/cursos', permitidos: ['FACULDADE'] },
+      { metodo: 'post', url: '/faculdade/cursos', permitidos: ['FACULDADE'] },
     ];
     const clientes: Record<string, Cliente> = {};
 

@@ -11,6 +11,7 @@ import { LimiteGuard } from './common/guards/limite.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { conexaoRedis } from './modules/email/redis';
 import { AdminModule } from './modules/admin/admin.module';
+import { FaculdadeModule } from './modules/faculdade/faculdade.module';
 import { AlunosModule } from './modules/alunos/alunos.module';
 import { AreasModule } from './modules/areas/areas.controller';
 import { SaudeModule } from './modules/saude.controller';
@@ -42,6 +43,7 @@ export class AppModule implements OnApplicationShutdown {
         AlunosModule,
         AreasModule,
         AdminModule,
+        FaculdadeModule,
         // Seção 8.3 / SEG-08: o módulo /__test__ só existe em NODE_ENV=test com ENABLE_TEST_ROUTES=true.
         ...(rotasDeTesteAtivas() ? [TestingModule] : []),
       ],
