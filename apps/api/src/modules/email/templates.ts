@@ -51,3 +51,10 @@ export const emailTrocaFaculdade = (para: string, token: string) =>
     rotulo: 'Confirmar troca',
     url: link('/aluno/trocar-faculdade/confirmar', token),
   });
+
+/** ASVS 2.2.3: aviso ao titular depois de qualquer mudança de senha. */
+export const emailSenhaAlterada = (para: string) =>
+  montarEmail(para, 'Sua senha foi alterada', [
+    'A senha da sua conta na plataforma de vagas acabou de ser alterada, e as outras sessões foram encerradas.',
+    'Se não foi você, use "Esqueci a senha" na tela de login para criar uma nova e avise o suporte.',
+  ]);

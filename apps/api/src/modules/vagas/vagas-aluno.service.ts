@@ -5,7 +5,7 @@ import { ClockService } from '../../common/clock.service';
 import { naoEncontrado } from '../../common/problema';
 import { aceitaCandidatura, filtroVagasVisiveis, vagaVisivel, type AlunoParaVisibilidade } from '../../domain/visibilidade';
 import { PrismaService } from '../../prisma/prisma.service';
-import { apresentarVaga, INCLUIR_VAGA } from './apresentacao';
+import { apresentarSalario, apresentarVaga, INCLUIR_VAGA, SELECAO_RESUMO_VAGA } from './apresentacao';
 
 const EMPRESA_PUBLICA = { select: { nomeFantasia: true, ramoAtuacao: true, cidade: true, uf: true, ativa: true, aprovacao: true } } as const;
 
@@ -40,25 +40,29 @@ export class VagasAlunoService {
     if (f.dias) filtros.push({ criadaEm: { gte: new Date(agora.getTime() - f.dias * 24 * 3600_000) } });
     const where: Prisma.VagaWhereInput = { AND: filtros };
 
-    const [total, vagas] = await this.prisma.$transaction([
+    // Contagem e página em paralelo, sem transação: cada uma usa a própria conexão (Fase 7, carga).
+    const [total, vagas] = await Promise.all([
       this.prisma.vaga.count({ where }),
       this.prisma.vaga.findMany({
         where,
         orderBy: f.ordem === 'prazo' ? [{ prazo: 'asc' }, { criadaEm: 'desc' }] : [{ criadaEm: 'desc' }],
         skip: (f.page - 1) * f.pageSize,
         take: f.pageSize,
-        include: {
-          ...INCLUIR_VAGA,
-          empresa: EMPRESA_PUBLICA,
+        select: {
+          ...SELECAO_RESUMO_VAGA,
+          empresa: { select: { nomeFantasia: true } },
           candidaturas: { where: { alunoId: aluno.alunoId, status: { not: 'CANCELADA' } }, select: { id: true } },
         },
       }),
     ]);
     return {
-      data: vagas.map(({ candidaturas, empresa, ...v }) => {
-        const { atividades: _a, requisitos: _r, beneficios: _b, processoSeletivo: _p, cultura: _c, versao: _v, ...resumo } = apresentarVaga(v);
-        return { ...resumo, empresa: { nomeFantasia: empresa.nomeFantasia }, candidatado: candidaturas.length > 0 };
-      }),
+      data: vagas.map(({ candidaturas, empresa, salarioMin, salarioMax, areas, ...v }) => ({
+        ...v,
+        salario: apresentarSalario(salarioMin, salarioMax),
+        areas: areas.map((a) => a.area),
+        empresa: { nomeFantasia: empresa.nomeFantasia },
+        candidatado: candidaturas.length > 0,
+      })),
       meta: { page: f.page, pageSize: f.pageSize, total },
     };
   }

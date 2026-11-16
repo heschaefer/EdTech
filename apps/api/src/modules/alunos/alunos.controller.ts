@@ -4,6 +4,7 @@ import {
   cadastroAlunoSchema,
   confirmarTrocaFaculdadeSchema,
   curriculoSchema,
+  excluirContaSchema,
   pedirTrocaFaculdadeSchema,
   trocarSenhaSchema,
   vinculoSchema,
@@ -14,9 +15,10 @@ import { z } from 'zod';
 import { PermitirInativo, Public, Roles, UsuarioAtual } from '../../common/decorators';
 import { Limite } from '../../common/guards/limite.guard';
 import type { UsuarioSessao } from '../../common/sessao';
-import { gravarCookiesSessao } from '../auth/cookies';
+import { gravarCookiesSessao, limparCookiesSessao } from '../auth/cookies';
 import { AlunosService } from './alunos.service';
 import { CurriculoService } from './curriculo.service';
+import { LgpdService } from './lgpd.service';
 
 class CadastroDto extends createZodDto(cadastroAlunoSchema) {}
 class AtualizarDto extends createZodDto(atualizarAlunoSchema) {}
@@ -25,6 +27,7 @@ class VinculoDto extends createZodDto(vinculoSchema) {}
 class CurriculoDto extends createZodDto(curriculoSchema) {}
 class PedirTrocaDto extends createZodDto(pedirTrocaFaculdadeSchema) {}
 class ConfirmarTrocaDto extends createZodDto(confirmarTrocaFaculdadeSchema) {}
+class ExcluirContaDto extends createZodDto(excluirContaSchema) {}
 class EmailQueryDto extends createZodDto(z.object({ email: z.string().trim().max(254) }).strict()) {}
 class TokenQueryDto extends createZodDto(z.object({ token: z.string().min(20).max(200) }).strict()) {}
 
@@ -57,6 +60,7 @@ export class AlunosController {
   constructor(
     private readonly alunos: AlunosService,
     private readonly curriculos: CurriculoService,
+    private readonly lgpd: LgpdService,
   ) {}
 
   // ---------- ALU-02 ----------
@@ -122,5 +126,25 @@ export class AlunosController {
   @HttpCode(200)
   confirmarTroca(@UsuarioAtual() u: UsuarioSessao, @Body() { token, ...vinculo }: ConfirmarTrocaDto) {
     return this.alunos.confirmarTrocaFaculdade(u.id, token, vinculo);
+  }
+
+  // ---------- Seção 8.4: direitos do titular (inclusive inativo) ----------
+  @PermitirInativo()
+  @Get('dados')
+  async exportar(@UsuarioAtual() u: UsuarioSessao, @Res({ passthrough: true }) res: Response) {
+    res.setHeader('Content-Disposition', 'attachment; filename="meus-dados.json"');
+    res.setHeader('Cache-Control', 'no-store');
+    return this.lgpd.exportar(u.id);
+  }
+
+  /** Confirmada com a senha: 5 tentativas a cada 15 min por usuário. */
+  @PermitirInativo()
+  @Limite(5, 15 * 60_000, 'usuario')
+  @Post('exclusao')
+  @HttpCode(200)
+  async excluir(@UsuarioAtual() u: UsuarioSessao, @Body() dto: ExcluirContaDto, @Res({ passthrough: true }) res: Response) {
+    await this.lgpd.excluir(u.id, dto.senha);
+    limparCookiesSessao(res);
+    return { ok: true };
   }
 }

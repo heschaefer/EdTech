@@ -39,6 +39,13 @@ export class TestingController {
     return this.testing.cenario(cenarioSchema.parse(body ?? {}));
   }
 
+  /** Volume para o teste de carga (scripts/carga.mjs). */
+  @Post('carga')
+  carga(@Body() body: unknown) {
+    const { vagas, candidatos } = z.object({ vagas: z.number().int().min(0).max(5000), candidatos: z.number().int().min(0).max(2000) }).strict().parse(body);
+    return this.testing.carga({ vagas, candidatos });
+  }
+
   @Post('admins')
   admin() {
     return this.testing.criarAdmin();

@@ -13,44 +13,110 @@ describe('Segurança', () => {
   });
   afterAll(() => app.close());
 
-  describe('SEG-01 matriz de acesso (cresce a cada fase)', () => {
+  describe('SEG-01 matriz de acesso: toda rota × todo papel × anônimo', () => {
     const ID = '00000000-0000-4000-8000-000000000000';
-    const rotas: { metodo: 'get' | 'post' | 'patch' | 'put' | 'delete'; url: string; permitidos: string[] }[] = [
-      { metodo: 'get', url: '/me', permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
-      { metodo: 'get', url: '/areas', permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
-      { metodo: 'get', url: '/admin/faculdades', permitidos: ['ADMIN'] },
-      { metodo: 'post', url: '/admin/faculdades', permitidos: ['ADMIN'] },
-      { metodo: 'get', url: '/admin/areas', permitidos: ['ADMIN'] },
-      { metodo: 'post', url: '/admin/areas', permitidos: ['ADMIN'] },
-      { metodo: 'get', url: '/faculdade/me', permitidos: ['FACULDADE'] },
-      { metodo: 'patch', url: '/faculdade/me', permitidos: ['FACULDADE'] },
-      { metodo: 'get', url: '/faculdade/cursos', permitidos: ['FACULDADE'] },
-      { metodo: 'post', url: '/faculdade/cursos', permitidos: ['FACULDADE'] },
-      { metodo: 'get', url: '/faculdade/alunos', permitidos: ['FACULDADE'] },
-      { metodo: 'get', url: '/alunos/me', permitidos: ['ALUNO'] },
-      { metodo: 'patch', url: '/alunos/me', permitidos: ['ALUNO'] },
-      { metodo: 'patch', url: '/alunos/me/vinculo', permitidos: ['ALUNO'] },
-      { metodo: 'get', url: '/alunos/me/curriculo', permitidos: ['ALUNO'] },
-      { metodo: 'post', url: '/alunos/me/troca-faculdade', permitidos: ['ALUNO'] },
-      { metodo: 'get', url: '/vagas', permitidos: ['ALUNO'] },
-      { metodo: 'get', url: '/empresa/me', permitidos: ['EMPRESA'] },
-      { metodo: 'get', url: '/empresa/vagas', permitidos: ['EMPRESA'] },
-      { metodo: 'post', url: '/empresa/vagas', permitidos: ['EMPRESA'] },
-      { metodo: 'get', url: '/admin/empresas', permitidos: ['ADMIN'] },
-      { metodo: 'post', url: `/vagas/${ID}/candidaturas`, permitidos: ['ALUNO'] },
-      { metodo: 'get', url: '/alunos/me/candidaturas', permitidos: ['ALUNO'] },
-      { metodo: 'get', url: `/candidaturas/${ID}`, permitidos: ['ALUNO'] },
-      { metodo: 'delete', url: `/candidaturas/${ID}`, permitidos: ['ALUNO'] },
-      { metodo: 'get', url: `/empresa/vagas/${ID}/candidaturas`, permitidos: ['EMPRESA'] },
-      { metodo: 'get', url: `/empresa/candidaturas/${ID}`, permitidos: ['EMPRESA'] },
-      { metodo: 'patch', url: `/empresa/candidaturas/${ID}/etapa`, permitidos: ['EMPRESA'] },
-      { metodo: 'post', url: `/empresa/candidaturas/${ID}/nao-selecionar`, permitidos: ['EMPRESA'] },
-      { metodo: 'post', url: `/empresa/vagas/${ID}/encerrar`, permitidos: ['EMPRESA'] },
-      { metodo: 'get', url: '/notificacoes', permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
-      { metodo: 'get', url: '/notificacoes/nao-lidas', permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
-      { metodo: 'patch', url: '/notificacoes/lidas', permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
-      { metodo: 'patch', url: `/notificacoes/${ID}/lida`, permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
+    const TODOS = ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'];
+    type Metodo = 'get' | 'post' | 'patch' | 'put' | 'delete';
+    // Seção 8.2: quem acessa cada rota. ":id" vira um UUID inexistente (o papel certo recebe 400/404/422, nunca 401/403).
+    const MATRIZ: [Metodo, string, string[]][] = [
+      ['get', '/me', TODOS],
+      ['get', '/areas', TODOS],
+      ['get', '/notificacoes', TODOS],
+      ['get', '/notificacoes/nao-lidas', TODOS],
+      ['patch', '/notificacoes/lidas', TODOS],
+      ['patch', '/notificacoes/:id/lida', TODOS],
+      // Admin
+      ['get', '/admin/faculdades', ['ADMIN']],
+      ['post', '/admin/faculdades', ['ADMIN']],
+      ['get', '/admin/faculdades/:id', ['ADMIN']],
+      ['patch', '/admin/faculdades/:id', ['ADMIN']],
+      ['post', '/admin/faculdades/:id/dominios', ['ADMIN']],
+      ['delete', '/admin/faculdades/:id/dominios', ['ADMIN']],
+      ['post', '/admin/faculdades/:id/convite', ['ADMIN']],
+      ['get', '/admin/areas', ['ADMIN']],
+      ['post', '/admin/areas', ['ADMIN']],
+      ['patch', '/admin/areas/:id', ['ADMIN']],
+      ['delete', '/admin/areas/:id', ['ADMIN']],
+      ['get', '/admin/empresas', ['ADMIN']],
+      ['get', '/admin/empresas/:id', ['ADMIN']],
+      ['patch', '/admin/empresas/:id', ['ADMIN']],
+      ['post', '/admin/empresas/:id/aprovar', ['ADMIN']],
+      ['post', '/admin/empresas/:id/reprovar', ['ADMIN']],
+      ['get', '/admin/auditoria', ['ADMIN']],
+      // Faculdade
+      ['get', '/faculdade/me', ['FACULDADE']],
+      ['patch', '/faculdade/me', ['FACULDADE']],
+      ['get', '/faculdade/cursos', ['FACULDADE']],
+      ['post', '/faculdade/cursos', ['FACULDADE']],
+      ['get', '/faculdade/cursos/:id', ['FACULDADE']],
+      ['patch', '/faculdade/cursos/:id', ['FACULDADE']],
+      ['delete', '/faculdade/cursos/:id', ['FACULDADE']],
+      ['get', '/faculdade/cursos/:id/semestres', ['FACULDADE']],
+      ['post', '/faculdade/semestres/:id/aulas', ['FACULDADE']],
+      ['patch', '/faculdade/aulas/:id', ['FACULDADE']],
+      ['delete', '/faculdade/aulas/:id', ['FACULDADE']],
+      ['get', '/faculdade/cursos/:id/turmas', ['FACULDADE']],
+      ['post', '/faculdade/cursos/:id/turmas', ['FACULDADE']],
+      ['patch', '/faculdade/turmas/:id', ['FACULDADE']],
+      ['delete', '/faculdade/turmas/:id', ['FACULDADE']],
+      ['get', '/faculdade/alunos', ['FACULDADE']],
+      ['patch', '/faculdade/alunos/:id/status', ['FACULDADE']],
+      // Aluno
+      ['get', '/alunos/me', ['ALUNO']],
+      ['patch', '/alunos/me', ['ALUNO']],
+      ['patch', '/alunos/me/senha', ['ALUNO']],
+      ['get', '/alunos/me/vinculo/opcoes', ['ALUNO']],
+      ['patch', '/alunos/me/vinculo', ['ALUNO']],
+      ['get', '/alunos/me/curriculo', ['ALUNO']],
+      ['put', '/alunos/me/curriculo', ['ALUNO']],
+      ['post', '/alunos/me/troca-faculdade', ['ALUNO']],
+      ['get', '/alunos/me/troca-faculdade', ['ALUNO']],
+      ['post', '/alunos/me/troca-faculdade/confirmar', ['ALUNO']],
+      ['get', '/alunos/me/dados', ['ALUNO']],
+      ['post', '/alunos/me/exclusao', ['ALUNO']],
+      ['get', '/alunos/me/candidaturas', ['ALUNO']],
+      ['get', '/vagas', ['ALUNO']],
+      ['get', '/vagas/:id', ['ALUNO']],
+      ['post', '/vagas/:id/candidaturas', ['ALUNO']],
+      ['get', '/candidaturas/:id', ['ALUNO']],
+      ['delete', '/candidaturas/:id', ['ALUNO']],
+      // Empresa
+      ['get', '/empresa/me', ['EMPRESA']],
+      ['patch', '/empresa/me', ['EMPRESA']],
+      ['post', '/empresa/me/solicitar-analise', ['EMPRESA']],
+      ['get', '/empresa/vagas', ['EMPRESA']],
+      ['post', '/empresa/vagas', ['EMPRESA']],
+      ['get', '/empresa/vagas/:id', ['EMPRESA']],
+      ['patch', '/empresa/vagas/:id', ['EMPRESA']],
+      ['delete', '/empresa/vagas/:id', ['EMPRESA']],
+      ['post', '/empresa/vagas/:id/pausar', ['EMPRESA']],
+      ['post', '/empresa/vagas/:id/reativar', ['EMPRESA']],
+      ['post', '/empresa/vagas/:id/prorrogar', ['EMPRESA']],
+      ['post', '/empresa/vagas/:id/encerrar', ['EMPRESA']],
+      ['get', '/empresa/vagas/:id/candidaturas', ['EMPRESA']],
+      ['get', '/empresa/candidaturas/:id', ['EMPRESA']],
+      ['patch', '/empresa/candidaturas/:id/etapa', ['EMPRESA']],
+      ['post', '/empresa/candidaturas/:id/nao-selecionar', ['EMPRESA']],
     ];
+    /** Rotas abertas (@Public), protegidas por rate limit e SameSite (seção 8.1). */
+    const PUBLICAS: [Metodo, string][] = [
+      ['get', '/saude'],
+      ['get', '/faculdades/por-dominio'],
+      ['post', '/auth/alunos'],
+      ['post', '/auth/empresas'],
+      ['post', '/auth/login'],
+      ['post', '/auth/verificar-email'],
+      ['post', '/auth/reenviar-verificacao'],
+      ['post', '/auth/senha/esqueci'],
+      ['post', '/auth/senha/redefinir'],
+      ['post', '/auth/convite/aceitar'],
+    ];
+    /** Dependem do próprio cookie de sessão; cobertas por AUTH-02, AUTH-03 e SEG-03. */
+    const SESSAO: [Metodo, string][] = [
+      ['post', '/auth/refresh'],
+      ['post', '/auth/logout'],
+    ];
+    const chave = (m: string, u: string) => `${m.toUpperCase()} ${u}`;
     const clientes: Record<string, Cliente> = {};
 
     beforeAll(async () => {
@@ -63,14 +129,36 @@ describe('Segurança', () => {
       await clientes.ADMIN.loginAdmin();
     });
 
-    it.each(rotas)('SEG-01 $metodo $url: anônimo 401, papel errado 403', async ({ metodo, url, permitidos }) => {
-      await request(app.getHttpServer())[metodo](API + url).expect(401);
-      for (const papel of ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN']) {
-        const res = await clientes[papel][metodo](url, metodo === 'get' ? undefined : {});
-        // Rota com :id inexistente responde 404 ao papel certo (posse, seção 8.2).
-        if (permitidos.includes(papel)) expect(url.includes(ID) ? [400, 404] : [200, 201, 400, 422]).toContain(res.status);
-        else expect(res.status).toBe(403);
+    it('SEG-01 inventário: toda rota registrada está na matriz, é pública declarada ou é de sessão; nada sobra na matriz', () => {
+      const express = app.getHttpAdapter().getInstance();
+      const registradas = new Set<string>(
+        (express.router ?? express._router).stack
+          .filter((l: { route?: { path: string } }) => l.route?.path.startsWith(API) && !l.route.path.startsWith(`${API}/__test__`))
+          .flatMap((l: { route: { path: string; methods: Record<string, boolean> } }) =>
+            Object.keys(l.route.methods).filter((m) => m !== '_all').map((m) => chave(m, l.route.path.slice(API.length))),
+          ),
+      );
+      const classificadas = new Set([...MATRIZ.map(([m, u]) => chave(m, u)), ...PUBLICAS.map(([m, u]) => chave(m, u)), ...SESSAO.map(([m, u]) => chave(m, u))]);
+      expect([...registradas].filter((r) => !classificadas.has(r)).sort()).toEqual([]);
+      expect([...classificadas].filter((r) => !registradas.has(r)).sort()).toEqual([]);
+    });
+
+    it.each(MATRIZ.map(([metodo, url, permitidos]) => ({ metodo, url, permitidos })))('SEG-01 $metodo $url: anônimo 401, papel errado 403', async ({ metodo, url, permitidos }) => {
+      const alvo = url.replace(':id', ID);
+      await request(app.getHttpServer())[metodo](API + alvo).expect(401);
+      for (const papel of TODOS) {
+        const res = await clientes[papel][metodo](alvo, metodo === 'get' ? undefined : {});
+        if (permitidos.includes(papel)) {
+          expect([401, 403]).not.toContain(res.status);
+          expect(res.status).toBeLessThan(500);
+        } else expect(res.status).toBe(403);
       }
+    });
+
+    it.each(PUBLICAS.map(([metodo, url]) => ({ metodo, url })))('SEG-01 $metodo $url é pública: anônimo não recebe 401/403', async ({ metodo, url }) => {
+      const res = await request(app.getHttpServer())[metodo](API + url).send({});
+      expect([401, 403]).not.toContain(res.status);
+      expect(res.status).toBeLessThan(500);
     });
   });
 
@@ -90,7 +178,23 @@ describe('Segurança', () => {
       expect(res.headers['x-frame-options']).toBeDefined();
       expect(res.headers['x-request-id']).toBeDefined();
       expect(res.headers['x-powered-by']).toBeUndefined();
+      // ASVS 8.2.1: nada da API fica em cache.
+      expect(res.headers['cache-control']).toBe('no-store');
     }
+  });
+
+  it('SEG-07 corpo JSON acima de 100 kB é recusado com 413 em problem+json', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`${API}/auth/login`)
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ email: 'a@b.com', senha: 'x'.repeat(120_000) }));
+    expect(res.status).toBe(413);
+    expect(res.headers['content-type']).toContain('application/problem+json');
+    expect(res.text).not.toMatch(/at \w+ \(/); // sem stack trace
+    // JSON malformado é erro do cliente (400), não do servidor.
+    const malformado = await request(app.getHttpServer()).post(`${API}/auth/login`).set('Content-Type', 'application/json').send('{"email":');
+    expect(malformado.status).toBe(400);
+    expect(malformado.body).toMatchObject({ status: 400 });
   });
 
   describe('SEG-10 JWT alterado, expirado ou com alg none → 401', () => {

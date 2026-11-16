@@ -4,6 +4,7 @@ import { ClockService } from '../../common/clock.service';
 import { encerramentoAutomaticoEm, filtroEncerrarAutomatico, filtroExpirar, filtroLembrete } from '../../domain/ciclo';
 import { dataHoraBrasilia } from '../../domain/prazo';
 import { PrismaService, type Tx } from '../../prisma/prisma.service';
+import { AuditoriaService } from '../auditoria/auditoria.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { EncerramentoService } from './encerramento.service';
 
@@ -28,6 +29,7 @@ export class PrazosService {
     private readonly clock: ClockService,
     private readonly notificacoes: NotificacoesService,
     private readonly encerramento: EncerramentoService,
+    private readonly auditoria: AuditoriaService,
   ) {}
 
   rodar(job: JobPrazo, vagaId?: string): Promise<number> {
@@ -50,6 +52,7 @@ export class PrazosService {
     return this.porVaga(filtroExpirar, vagaId, async (tx, v, agora) => {
       const { count } = await tx.vaga.updateMany({ where: { id: v.id, ...filtroExpirar(agora) }, data: { status: 'PRAZO_EXPIRADO', versao: { increment: 1 } } });
       if (!count) return false;
+      await this.auditoria.registrar({ usuarioId: null, acao: 'SISTEMA_EXPIROU_VAGA', entidade: 'Vaga', entidadeId: v.id, dados: { para: 'PRAZO_EXPIRADO' } }, tx);
       await this.notificacoes.criar(
         {
           usuarioId: v.empresa.usuarioId,
@@ -92,6 +95,7 @@ export class PrazosService {
       });
       if (!count) return false;
       const r = await this.encerramento.devolutiva(tx, { vagaId: v.id, motivo: 'AUTOMATICO', selecionados: [], autorId: null, agora });
+      await this.auditoria.registrar({ usuarioId: null, acao: 'SISTEMA_ENCERROU_VAGA', entidade: 'Vaga', entidadeId: v.id, dados: { de: 'PRAZO_EXPIRADO', para: 'ENCERRADA', ...r } }, tx);
       await this.notificacoes.criar(
         {
           usuarioId: v.empresa.usuarioId,

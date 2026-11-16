@@ -15,7 +15,7 @@ Stack: NestJS + Prisma (PostgreSQL) · Next.js 15 + Tailwind v4 · BullMQ (Redis
 | 4 · Empresa e vagas | ✅ EMP-01 e EMP-02 (cadastro com ViaCEP e perfil), ADM-04 e ADM-05 (aprovação e gestão de empresas), EMP-03 a EMP-07 (criar, editar com versão, pausar, excluir, prorrogar), ALU-05 e ALU-06 (lista com filtros na URL e detalhe). Adiantado da Fase 6: o outbox que envia por e-mail cada notificação in-app (RN-23) |
 | 5 · Candidaturas | ✅ ALU-07 e ALU-08 (candidatar-se, remover e reinscrever-se), ALU-09 e ALU-10 (em andamento, histórico e linha do tempo), EMP-08 a EMP-10 (lista de candidatos com contagem por etapa, perfil com currículo e auditoria, mover etapa, não selecionar), SEG-02 e SEG-09 |
 | 6 · Ciclo de vida e notificações | ✅ ALU-11 (sino e central de notificações, com e-mail de cada evento pelo outbox), EMP-11 (encerramento com escolha dos selecionados e tela de resumo), JOB-01 a JOB-03 e EMP-12 (vencimento, lembrete e encerramento automático no worker a cada 5 min, com os atalhos "Prorrogar" e "Encerrar") |
-| 7 | Pendente. LGPD (exportação, exclusão), revisão OWASP, seed de demonstração e teste de carga |
+| 7 · Endurecimento | ✅ LGPD (exportação em JSON, exclusão com anonimização, trilha de auditoria para o admin), revisão OWASP ASVS nível 1 ([docs/seguranca.md](docs/seguranca.md)), seed de demonstração da seção 10.1 e teste de carga das listagens ([docs/carga.md](docs/carga.md)) |
 
 `pnpm spec:pendentes` lista quais IDs da spec ainda não têm teste.
 
@@ -33,8 +33,9 @@ docker compose up -d postgres redis mailpit
 pnpm --filter @vagas/contracts build
 pnpm db:migrate                         # aplica as migrações
 pnpm db:seed                            # admin + áreas de formação
+pnpm db:seed:demo --reset               # opcional: dados da seção 10.1 (apaga tudo antes)
 pnpm dev                                # API :3001, web :3000
-pnpm --filter api dev:worker            # worker de e-mails (outro terminal)
+pnpm --filter api dev:worker            # worker: e-mails e jobs de prazo (outro terminal)
 ```
 
 Ou tudo em contêineres: `pnpm chaves:gerar && docker compose up --build`.
@@ -43,13 +44,22 @@ Ou tudo em contêineres: `pnpm chaves:gerar && docker compose up --build`.
 - Caixa de e-mails (Mailpit): http://localhost:8025
 - Documentação OpenAPI (fora de produção): http://localhost:3001/api/docs
 
-### Conta de demonstração
+### Contas de demonstração
 
-| Papel | E-mail | Senha | 2FA |
-| --- | --- | --- | --- |
-| Admin | admin@vagas.local | `Demo@2026!` | Segredo TOTP `KVKFKRCPNZQUYMLXOVYDSQKJKZDTSRLD` (cadastre num app autenticador) |
+O admin vem do seed base; as demais, de `pnpm db:seed:demo --reset` (seção 10.1). Todas usam a senha `Demo@2026!`.
 
-Esses valores só existem no seed e neste README. Em produção, `ADMIN_EMAIL`, `ADMIN_SENHA` e `ADMIN_TOTP_SECRET` são obrigatórios. As demais contas da seção 10.1 chegam com o seed de demonstração (Fase 7).
+| Papel | E-mail | O que mostrar |
+| --- | --- | --- |
+| Admin | admin@vagas.local · 2FA: segredo TOTP `KVKFKRCPNZQUYMLXOVYDSQKJKZDTSRLD` (cadastre num app autenticador) | Aprovar a empresa pendente, faculdade inativa, áreas, auditoria |
+| Faculdade | contato@uhorizonte.edu.br | Cursos com grade e turmas, alunos, desligar um aluno ao vivo |
+| Empresa | rh@nuvemazul.com.br | Vagas em todos os estados, candidatos por etapa, encerrar com devolutiva |
+| Empresa pendente | contato@faisca.com.br | "Cadastro em análise" e bloqueio de publicação |
+| Aluna ativa | ana.souza@aluno.uhorizonte.edu.br | Vagas da área, candidaturas em etapas diferentes, uma seleção, notificações |
+| Aluno com histórico | bruno.lima@aluno.uhorizonte.edu.br | Histórico com candidatura cancelada e não selecionada |
+| Aluna desligada | carla.mendes@aluno.uhorizonte.edu.br | Acesso restrito; a empresa vê "Aluno inativo" |
+| Aluno novo | diego.alves@aluno.valedosul.edu.br | Primeiro acesso com currículo vazio |
+
+Esses valores só existem nos seeds e neste README. Em produção, `ADMIN_EMAIL`, `ADMIN_SENHA` e `ADMIN_TOTP_SECRET` são obrigatórios, e o seed de demonstração se recusa a rodar.
 
 ## Testes
 
@@ -58,6 +68,7 @@ Esses valores só existem no seed e neste README. Em produção, `ADMIN_EMAIL`, 
 | `pnpm test` | Unitários (Jest). `src/domain` exige ≥ 90% de linhas |
 | `pnpm test:int` | Integração: Jest + Supertest + Testcontainers (sobe Postgres e Redis sozinho) |
 | `pnpm test:e2e` | Playwright contra a stack em modo teste (veja abaixo) |
+| `pnpm carga` | Teste de carga das listagens contra a stack em modo teste ([docs/carga.md](docs/carga.md)) |
 | `pnpm spec:check` | Falha se algum ID da spec não aparece em título de teste |
 
 E2E, como no CI:
@@ -79,6 +90,9 @@ packages/contracts  Schemas Zod, enums e validadores (CPF, CNPJ, senha) comparti
 packages/ui   Componentes Tailwind
 e2e           Playwright: fixtures, specs, helpers do Mailpit
 docs/spec.md  A spec (lida pelo spec:check)
+docs/seguranca.md  Revisão OWASP ASVS nível 1 (Fase 7)
+docs/carga.md  Metas e resultados do teste de carga (Fase 7)
+scripts/carga.mjs  Teste de carga das listagens
 ```
 
 ## Decisões de implementação que a spec não fixa
@@ -109,5 +123,11 @@ docs/spec.md  A spec (lida pelo spec:check)
 - **Notificações (ALU-11):** `GET /notificacoes` devolve também `naoLidas`; `GET /notificacoes/nao-lidas` é a contagem leve que o sino consulta a cada 30 s. A central fica em `/{papel}/notificacoes` para os quatro papéis, e o aluno inativo também a acessa. "Abrir" (e os atalhos) marcam a notificação como lida. Marcar de novo mantém a data da primeira leitura.
 - **Atalhos do EMP-12:** as notificações de prazo vencido e de lembrete levam a `/empresa/vagas/:id#prorrogar` (foco no campo do novo prazo) e a `/empresa/vagas/:id/encerrar`.
 - **Tabelas no celular:** a região com rolagem horizontal é focável (`role="region"`, `tabIndex=0`), exigência do axe (`scrollable-region-focusable`).
+- **Exclusão de conta (seção 8.4):** `POST /alunos/me/exclusao { senha, confirmacao: "EXCLUIR" }` (5 tentativas a cada 15 min). Anonimiza nome, e-mail, telefone e CPF (que ficam livres para um novo cadastro), apaga currículo, sessões, tokens e notificações e cancela as candidaturas em processo. As finalizadas ficam só para agregados: a empresa vê "Titular removido", sem perfil, e a faculdade deixa de ver o registro. O acesso cai na hora, mesmo com o access token ainda válido.
+- **Exportação (seção 8.4):** `GET /alunos/me/dados` devolve um JSON com cadastro (CPF mascarado, como a seção 8.2 manda mostrar ao próprio aluno), vínculo, currículo, candidaturas com eventos, notificações e quais empresas abriram o perfil. Exportar e excluir valem também para o aluno inativo, na página "Privacidade".
+- **Auditoria:** além do acesso a perfil e das ações de admin, vão para o `AuditLog` as mudanças de status de vaga (empresa e jobs, estes com autor nulo) e de conta (desligamento, troca de faculdade, exclusão). Mudanças de candidatura ficam no `CandidaturaEvento` (RN-18). O IP vem do contexto da requisição. O admin consulta tudo em `GET /admin/auditoria`.
+- **Seed de demonstração:** Faker com semente fixa e datas relativas ao dia em que roda. As notificações nascem com o e-mail marcado como enviado, para não lotar o Mailpit. O Instituto Aurora tem o curso de Enfermagem, cujos alunos foram inativados com a faculdade (RN-27).
+- **Imagem da API:** Debian slim em vez de Alpine; o teste de carga mostrou o motor do Prisma travado no `malloc` da musl ([docs/carga.md](docs/carga.md)).
+- **Exceções do audit:** três advisories altas aceitas com justificativa (`pnpm.auditConfig.ignoreGhsas`, ver [docs/seguranca.md](docs/seguranca.md)).
 - **E-mails:** templates HTML simples por enquanto; a migração para React Email (seção 10) fica pendente.
 - **spec:check:** lê os títulos dos testes direto dos arquivos (`it`, `test`, `describe`), sem precisar rodar as suítes.

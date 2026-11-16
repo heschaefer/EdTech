@@ -14,6 +14,7 @@ import { CifraService } from '../../common/cripto/cifra.service';
 import { hashSenha, senhaConfere } from '../../common/cripto/senha';
 import { conflito, erroDeCampo, naoEncontrado, Problema } from '../../common/problema';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditoriaService } from '../auditoria/auditoria.service';
 import { AuthService } from '../auth/auth.service';
 import { TokensEmailService } from '../auth/tokens-email.service';
 import { EmailService } from '../email/email.service';
@@ -33,6 +34,7 @@ export class AlunosService {
     private readonly email: EmailService,
     private readonly auth: AuthService,
     private readonly curriculos: CurriculoService,
+    private readonly auditoria: AuditoriaService,
   ) {}
 
   /** ALU-01: ao sair do campo e-mail, a faculdade aparece com seus cursos e turmas (RN-01). */
@@ -134,6 +136,7 @@ export class AlunosService {
     if (requisitosSenhaNaoAtendidos(nova, u.email).includes('CONTEM_EMAIL')) throw erroDeCampo('senha', MENSAGENS_SENHA.CONTEM_EMAIL, HttpStatus.BAD_REQUEST);
     await this.prisma.usuario.update({ where: { id: usuarioId }, data: { senhaHash: await hashSenha(nova) } });
     await this.auth.revogarSessoes(usuarioId);
+    await this.auth.avisarSenhaAlterada(u.email);
     return this.auth.abrirSessao(u);
   }
 
@@ -189,6 +192,8 @@ export class AlunosService {
         if (!consumido || consumido.usuarioId !== usuarioId) throw linkInvalido();
         await tx.usuario.update({ where: { id: usuarioId }, data: { email, status: 'ATIVO', emailVerificadoEm: this.clock.agora() } });
         await tx.aluno.update({ where: { id: aluno.id }, data: { faculdadeId: nova.id, ...v, motivoInativacao: null } });
+        // Seção 8.4: a conta volta a ATIVA, mudança de status auditada.
+        await this.auditoria.registrar({ usuarioId, acao: 'ALUNO_TROCOU_FACULDADE', entidade: 'Aluno', entidadeId: aluno.id, dados: { faculdadeAnterior: aluno.faculdadeId, faculdadeNova: nova.id } }, tx);
       });
     } catch (e) {
       throw traduzirDuplicidade(e);

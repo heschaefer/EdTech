@@ -9,12 +9,14 @@ import {
   atualizarEmpresaAdminSchema,
   filtroEmpresasSchema,
   reprovarEmpresaSchema,
+  filtroAuditoriaSchema,
 } from '@vagas/contracts';
 import type { Request } from 'express';
 import { createZodDto } from 'nestjs-zod';
 import { Roles, UsuarioAtual } from '../../common/decorators';
 import type { UsuarioSessao } from '../../common/sessao';
 import { AdminAreasService } from './admin-areas.service';
+import { AdminAuditoriaService } from './admin-auditoria.service';
 import { AdminEmpresasService } from './admin-empresas.service';
 import { AdminFaculdadesService } from './admin-faculdades.service';
 
@@ -27,6 +29,7 @@ class FiltroFaculdadesDto extends createZodDto(filtroFaculdadesSchema) {}
 class FiltroEmpresasDto extends createZodDto(filtroEmpresasSchema) {}
 class ReprovarDto extends createZodDto(reprovarEmpresaSchema) {}
 class AtivaEmpresaDto extends createZodDto(atualizarEmpresaAdminSchema) {}
+class FiltroAuditoriaDto extends createZodDto(filtroAuditoriaSchema) {}
 
 const ator = (u: UsuarioSessao, req: Request) => ({ id: u.id, ip: req.ip });
 
@@ -37,7 +40,14 @@ export class AdminController {
     private readonly faculdades: AdminFaculdadesService,
     private readonly areas: AdminAreasService,
     private readonly empresas: AdminEmpresasService,
+    private readonly auditoria: AdminAuditoriaService,
   ) {}
+
+  // ---------- Seção 8.4 ----------
+  @Get('auditoria')
+  listarAuditoria(@Query() q: FiltroAuditoriaDto) {
+    return this.auditoria.listar(q);
+  }
 
   // ---------- ADM-01 / ADM-02 ----------
   @Get('faculdades')

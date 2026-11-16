@@ -7,7 +7,7 @@ import { CifraService } from '../common/cripto/cifra.service';
 import { hashSenha } from '../common/cripto/senha';
 import { fimDoDia, dataCivil, somarHoras } from '../domain/prazo';
 import { PrismaService } from '../prisma/prisma.service';
-import { seedBase } from '../seed/base';
+import { limparBanco, seedBase } from '../seed/base';
 
 export const SENHA_TESTE = 'Teste@2026!x';
 
@@ -27,11 +27,7 @@ export class TestingService {
   ) {}
 
   async reset() {
-    await this.prisma.$executeRaw`TRUNCATE TABLE
-      "AuditLog", "Notificacao", "CandidaturaEvento", "Candidatura", "EtapaSelecao", "VagaArea", "Vaga", "Empresa",
-      "Idioma", "Projeto", "CursoComplementar", "Experiencia", "FormacaoAcademica", "Curriculo", "Aluno",
-      "Turma", "Aula", "Semestre", "Curso", "DominioFaculdade", "Faculdade", "AreaFormacao",
-      "TokenEmail", "RefreshToken", "Usuario" CASCADE`;
+    await limparBanco(this.prisma);
     await seedBase(this.prisma);
   }
 
@@ -182,6 +178,80 @@ export class TestingService {
       },
     });
     return { email, senha: SENHA_TESTE, totpSecret };
+  }
+
+  /**
+   * Volume para o teste de carga (Fase 7): `vagas` vagas abertas na área Tecnologia e `candidatos`
+   * alunos candidatados à vaga do cenário. Inserção em lote; só existe no ambiente de teste.
+   */
+  async carga({ vagas, candidatos }: { vagas: number; candidatos: number }) {
+    const c = await this.cenario({ areaCurso: 'Tecnologia', comCandidatura: true });
+    const agora = this.clock.agora();
+    const senhaHash = await this.senha();
+    const area = await this.area('Tecnologia');
+    const vaga = await this.prisma.vaga.findUniqueOrThrow({ where: { id: c.vaga.id }, include: { etapas: { orderBy: { ordem: 'asc' } } } });
+    const aluno = await this.prisma.aluno.findUniqueOrThrow({ where: { id: c.aluno.id } });
+    const sufixo = randomUUID().slice(0, 8);
+
+    const novas = await this.prisma.vaga.createManyAndReturn({
+      data: Array.from({ length: vagas }, (_, i) => ({
+        empresaId: vaga.empresaId,
+        funcao: `${i % 3 === 0 ? 'Estágio' : 'Analista'} carga ${sufixo} ${i}`,
+        tipo: i % 3 === 0 ? ('ESTAGIO' as const) : ('CLT' as const),
+        modalidade: i % 2 ? ('REMOTO' as const) : ('HIBRIDO' as const),
+        cidade: i % 2 ? null : 'São Paulo',
+        uf: i % 2 ? null : 'SP',
+        atividades: 'Atividades',
+        requisitos: 'Requisitos',
+        beneficios: 'Benefícios',
+        processoSeletivo: 'Processo',
+        cultura: 'Cultura',
+        salarioMin: 1500 + (i % 20) * 100,
+        salarioMax: 2500 + (i % 20) * 100,
+        prazo: vaga.prazo,
+        criadaEm: new Date(agora.getTime() - (i % 60) * 24 * 3600_000),
+      })),
+      select: { id: true },
+    });
+    await this.prisma.vagaArea.createMany({ data: novas.map((v) => ({ vagaId: v.id, areaId: area.id })) });
+    await this.prisma.etapaSelecao.createMany({ data: novas.flatMap((v) => [{ vagaId: v.id, nome: 'Triagem', ordem: 1 }, { vagaId: v.id, nome: 'Entrevista', ordem: 2 }]) });
+
+    const usuarios = await this.prisma.usuario.createManyAndReturn({
+      data: Array.from({ length: candidatos }, (_, i) => ({ email: `carga.${sufixo}.${i}@${c.faculdade.dominio}`, senhaHash, papel: 'ALUNO' as const, status: 'ATIVO' as const, emailVerificadoEm: agora })),
+      select: { id: true, email: true },
+    });
+    const alunos = await this.prisma.aluno.createManyAndReturn({
+      data: usuarios.map((u, i) => {
+        const cpf = gerarCpf(digitos(9));
+        return {
+          usuarioId: u.id,
+          nome: `Candidato Carga ${i}`,
+          cpfHash: this.cifra.hmac(`${cpf}-${u.id}`),
+          cpfCifrado: this.cifra.cifrar(cpf),
+          telefone: '11999990000',
+          faculdadeId: aluno.faculdadeId,
+          cursoId: aluno.cursoId,
+          turmaId: aluno.turmaId,
+          semestreAtual: (i % 8) + 1,
+          termosVersao: '1',
+          termosAceitosEm: agora,
+        };
+      }),
+      select: { id: true },
+    });
+    const candidaturas = await this.prisma.candidatura.createManyAndReturn({
+      data: alunos.map((a, i) => ({
+        alunoId: a.id,
+        vagaId: vaga.id,
+        etapaAtualId: vaga.etapas[i % vaga.etapas.length].id,
+        status: i % 10 === 0 ? ('NAO_SELECIONADO' as const) : ('EM_PROCESSO' as const),
+        criadaEm: new Date(agora.getTime() - i * 60_000),
+      })),
+      select: { id: true },
+    });
+    await this.prisma.candidaturaEvento.createMany({ data: candidaturas.map((x) => ({ candidaturaId: x.id, tipo: 'CRIADA', paraStatus: 'EM_PROCESSO' as const, criadoEm: agora })) });
+
+    return { aluno: c.aluno, empresa: c.empresa, vagaId: vaga.id, alunos: usuarios.slice(0, 20).map((u) => ({ email: u.email, senha: SENHA_TESTE })) };
   }
 
   async moverPrazo(vagaId: string, prazo: Date) {

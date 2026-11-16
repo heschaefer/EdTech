@@ -37,6 +37,15 @@ export function credenciaisAdmin() {
   };
 }
 
+/** Apaga todos os dados (reset de teste e `db:seed:demo --reset`). */
+export async function limparBanco(prisma: PrismaClient) {
+  await prisma.$executeRaw`TRUNCATE TABLE
+    "AuditLog", "Notificacao", "CandidaturaEvento", "Candidatura", "EtapaSelecao", "VagaArea", "Vaga", "Empresa",
+    "Idioma", "Projeto", "CursoComplementar", "Experiencia", "FormacaoAcademica", "Curriculo", "Aluno",
+    "Turma", "Aula", "Semestre", "Curso", "DominioFaculdade", "Faculdade", "AreaFormacao",
+    "TokenEmail", "RefreshToken", "Usuario" CASCADE`;
+}
+
 /** Seed base (Fase 0): admin com 2FA TOTP e áreas de formação. Idempotente. */
 export async function seedBase(prisma: PrismaClient) {
   for (const nome of AREAS_BASE) {

@@ -8,7 +8,7 @@ import { PAINEL_POR_PAPEL, type Papel } from '@vagas/contracts';
  */
 const PREFIXOS: Record<string, Papel> = { '/aluno': 'ALUNO', '/empresa': 'EMPRESA', '/faculdade': 'FACULDADE', '/admin': 'ADMIN' };
 // RN-22: aluno INATIVO só acessa troca de faculdade e histórico (e as próprias notificações).
-const ROTAS_ALUNO_INATIVO = ['/aluno/trocar-faculdade', '/aluno/candidaturas', '/aluno/notificacoes'];
+const ROTAS_ALUNO_INATIVO = ['/aluno/trocar-faculdade', '/aluno/candidaturas', '/aluno/notificacoes', '/aluno/privacidade'];
 
 let chave: Promise<CryptoKey> | undefined;
 const chavePublica = () => (chave ??= importSPKI((process.env.JWT_PUBLIC_KEY ?? '').replace(/\\n/g, '\n'), 'RS256'));

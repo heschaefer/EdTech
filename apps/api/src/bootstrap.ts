@@ -16,6 +16,14 @@ export function configurarApp(app: NestExpressApplication) {
   app.setGlobalPrefix('api/v1');
   app.use(requestId);
   app.use(helmet()); // SEG-07
+  // ASVS 8.2.1: respostas da API (dados pessoais, sessão) nunca ficam em cache do navegador ou de proxies.
+  app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Pragma', 'no-cache');
+    next();
+  });
+  // Corpo JSON limitado a 100 kB: também mitiga validações caras sobre coleções enormes (GHSA-mrhx-c7xc-m3w5).
+  app.useBodyParser('json', { limit: '100kb' });
   app.use(cookieParser());
   app.enableShutdownHooks();
 

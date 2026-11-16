@@ -10,7 +10,7 @@ import { gerarTokenOpaco, sha256 } from '../../common/cripto/tokens';
 import { naoAutenticado, Problema } from '../../common/problema';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
-import { emailBloqueio, emailRedefinicao, emailVerificacao } from '../email/templates';
+import { emailBloqueio, emailRedefinicao, emailSenhaAlterada, emailVerificacao } from '../email/templates';
 import { ChavesJwtService } from './chaves-jwt.service';
 import { VIDA_REFRESH_MS } from './cookies';
 import { TokensEmailService } from './tokens-email.service';
@@ -229,7 +229,7 @@ export class AuthService {
 
   private async definirSenhaPorToken(token: string, senha: string, tipo: 'RESET_SENHA' | 'CONVITE') {
     const hash = await hashSenha(senha);
-    const usuarioId = await this.prisma.$transaction(async (tx) => {
+    const usuario = await this.prisma.$transaction(async (tx) => {
       const t = await this.tokens.consumir(token, tipo, tx);
       if (!t) throw linkInvalido();
       const u = await tx.usuario.findUniqueOrThrow({ where: { id: t.usuarioId } });
@@ -248,9 +248,15 @@ export class AuthService {
           ...(tipo === 'CONVITE' ? { status: 'ATIVO', emailVerificadoEm: u.emailVerificadoEm ?? agora } : {}),
         },
       });
-      return u.id;
+      return u;
     });
-    await this.revogarSessoes(usuarioId);
+    await this.revogarSessoes(usuario.id);
+    if (tipo === 'RESET_SENHA') await this.email.enfileirar(emailSenhaAlterada(usuario.email));
+  }
+
+  /** ASVS 2.2.3: avisa por e-mail que a senha mudou (troca pelo perfil, ALU-02). */
+  avisarSenhaAlterada(email: string) {
+    return this.email.enfileirar(emailSenhaAlterada(email));
   }
 }
 

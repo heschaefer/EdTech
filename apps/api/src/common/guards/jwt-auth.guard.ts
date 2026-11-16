@@ -28,8 +28,10 @@ export class JwtAuthGuard implements CanActivate {
     const sessao = typeof token === 'string' ? this.chaves.verificar(token) : null;
     if (!sessao) throw naoAutenticado();
 
-    const usuario = await this.prisma.usuario.findUnique({ where: { id: sessao.id }, select: { status: true, papel: true } });
+    const usuario = await this.prisma.usuario.findUnique({ where: { id: sessao.id }, select: { status: true, papel: true, aluno: { select: { anonimizadoEm: true } } } });
     if (!usuario || usuario.papel !== sessao.papel) throw naoAutenticado();
+    // Seção 8.4: conta excluída a pedido do titular perde o acesso na hora, mesmo com access token ainda válido.
+    if (usuario.aluno?.anonimizadoEm) throw naoAutenticado();
 
     if (usuario.status !== 'ATIVO') {
       // RN-22: aluno INATIVO só passa nas rotas @PermitirInativo(); os demais papéis perdem o acesso.

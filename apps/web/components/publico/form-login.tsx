@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { PAINEL_POR_PAPEL, type Me } from '@vagas/contracts';
+import { destinoInterno, PAINEL_POR_PAPEL, type Me } from '@vagas/contracts';
 import { Aviso } from '@/components/aviso';
 import { api, ErroApi, renovarSessao } from '@/lib/api';
 
@@ -18,13 +18,11 @@ const schema = z.object({
 });
 type Dados = z.infer<typeof schema>;
 
-/** Só aceita destinos internos (evita open redirect). */
-const destinoSeguro = (next: string | null) => (next && next.startsWith('/') && !next.startsWith('//') ? next : null);
 
 export function FormLogin() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = destinoSeguro(params.get('next'));
+  const next = destinoInterno(params.get('next')); // só destinos internos (sem open redirect)
   const [erro, setErro] = useState('');
   const [precisa2fa, setPrecisa2fa] = useState(false);
   const [podeReenviar, setPodeReenviar] = useState(false);
@@ -64,6 +62,11 @@ export function FormLogin() {
   return (
     <Cartao>
       <h1 className="mb-4 text-xl font-semibold">Entrar</h1>
+      {params.get('conta') === 'excluida' && (
+        <div className="mb-4">
+          <Aviso tipo="sucesso">Sua conta foi excluída e seus dados pessoais foram anonimizados.</Aviso>
+        </div>
+      )}
       <form onSubmit={handleSubmit(enviar)} className="flex flex-col gap-4" noValidate>
         <Campo rotulo="E-mail" type="email" autoComplete="username" {...register('email')} erro={formState.errors.email?.message} />
         <Campo rotulo="Senha" type="password" autoComplete="current-password" {...register('senha')} erro={formState.errors.senha?.message} />

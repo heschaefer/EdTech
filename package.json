@@ -18,10 +18,23 @@
     "chaves:gerar": "node scripts/gerar-chaves.mjs",
     "db:migrate": "pnpm --filter api prisma:migrate",
     "db:seed": "pnpm --filter api db:seed",
-    "db:seed:demo": "pnpm --filter api db:seed:demo"
+    "db:seed:demo": "pnpm --filter api db:seed:demo",
+    "carga": "node scripts/carga.mjs"
   },
   "devDependencies": {
     "turbo": "^2.5.0",
     "typescript": "~5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss@<8.5.18": "^8.5.18"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-qxc2-j82w-r537",
+        "GHSA-ggr8-5vv4-36mx",
+        "GHSA-mrhx-c7xc-m3w5"
+      ]
+    }
   }
 }

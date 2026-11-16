@@ -28,7 +28,9 @@ export class AlunosFaculdadeService {
   ) {}
 
   async listar(faculdadeId: string, f: Filtro) {
+    // Seção 8.4: titular que pediu exclusão não aparece mais como registro individual.
     const where: Prisma.AlunoWhereInput = {
+      anonimizadoEm: null,
       faculdadeId,
       ...(f.cursoId ? { cursoId: f.cursoId } : {}),
       ...(f.turmaId ? { turmaId: f.turmaId } : {}),
@@ -72,7 +74,7 @@ export class AlunosFaculdadeService {
    * reativar vale só para quem a própria faculdade desligou.
    */
   async alterarStatus(faculdadeId: string, alunoId: string, mudanca: StatusAlunoInput, ator: { id: string; ip?: string }) {
-    const aluno = await this.prisma.aluno.findFirst({ where: { id: alunoId, faculdadeId }, include: { usuario: true } });
+    const aluno = await this.prisma.aluno.findFirst({ where: { id: alunoId, faculdadeId, anonimizadoEm: null }, include: { usuario: true } });
     if (!aluno) throw naoEncontrado('Aluno não encontrado');
 
     await this.prisma.$transaction(async (tx) => {

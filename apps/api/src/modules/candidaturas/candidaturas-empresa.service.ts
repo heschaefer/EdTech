@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { mensagemEncerrada, mensagemEtapa, type FiltroCandidatos } from '@vagas/contracts';
+import { mensagemEncerrada, mensagemEtapa, NOME_TITULAR_REMOVIDO, type FiltroCandidatos } from '@vagas/contracts';
 import type { Prisma } from '@prisma/client';
 import { ClockService } from '../../common/clock.service';
 import { conflito, erroDeCampo, naoEncontrado, regraDeNegocio } from '../../common/problema';
@@ -61,7 +61,8 @@ export class CandidaturasEmpresaService {
     const where: Prisma.CandidaturaWhereInput = { AND: filtros };
     const ativos: Prisma.CandidaturaWhereInput = { vagaId, ...FILTRO_PERFIL_EMPRESA };
 
-    const [total, itens, porEtapa, porStatus, cursos, faculdades] = await this.prisma.$transaction([
+    // Consultas independentes em paralelo, sem transação (Fase 7, carga).
+    const [total, itens, porEtapa, porStatus, cursos, faculdades] = await Promise.all([
       this.prisma.candidatura.count({ where }),
       this.prisma.candidatura.findMany({
         where,
@@ -77,6 +78,7 @@ export class CandidaturasEmpresaService {
           aluno: {
             select: {
               nome: true,
+              anonimizadoEm: true,
               semestreAtual: true,
               curso: { select: { id: true, nome: true } },
               faculdade: { select: { id: true, nomeFantasia: true } },
@@ -98,6 +100,8 @@ export class CandidaturasEmpresaService {
       opcoes: { cursos, faculdades: faculdades.map((x) => ({ id: x.id, nome: x.nomeFantasia })) },
       data: itens.map((c) => {
         // D17: cancelada por desligamento aparece como "Aluno inativo", sem perfil nem dados acadêmicos.
+        // Seção 8.4: titular que pediu exclusão só conta nos agregados.
+        if (c.aluno.anonimizadoEm) return { id: c.id, status: c.status, alunoInativo: false, alunoRemovido: true, criadaEm: c.criadaEm, atualizadaEm: c.atualizadaEm, etapa: null, aluno: { nome: NOME_TITULAR_REMOVIDO } };
         if (c.status === 'CANCELADA') return { id: c.id, status: c.status, alunoInativo: true, criadaEm: c.criadaEm, atualizadaEm: c.atualizadaEm, etapa: null, aluno: { nome: c.aluno.nome } };
         return {
           id: c.id,

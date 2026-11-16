@@ -130,6 +130,8 @@ describe('Autenticação', () => {
 
       await sessao.post('/auth/refresh').expect(401);
       await new Cliente(app).login(aluno.email, nova);
+      // ASVS 2.2.3: o titular é avisado da mudança de senha.
+      expect((await emailsPara(aluno.email)).map((e) => e.assunto)).toContain('Sua senha foi alterada');
     });
 
     it('AUTH-04 link expira em 1 h', async () => {

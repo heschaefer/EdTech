@@ -7,6 +7,7 @@ import { RegraViolada, TransicaoInvalida } from '../../domain/erros';
 import { origensVaga, transicaoVaga, TRANSICOES_VAGA, type AcaoVaga } from '../../domain/maquinas';
 import { MENSAGENS_PRAZO, prazoVencido, validarPrazo } from '../../domain/prazo';
 import { PrismaService, type Tx } from '../../prisma/prisma.service';
+import { AuditoriaService } from '../auditoria/auditoria.service';
 import { EncerramentoService } from '../ciclo/encerramento.service';
 import { EmpresasService } from '../empresas/empresas.service';
 import { apresentarVaga, INCLUIR_VAGA } from './apresentacao';
@@ -31,7 +32,13 @@ export class VagasEmpresaService {
     private readonly clock: ClockService,
     private readonly empresas: EmpresasService,
     private readonly encerramento: EncerramentoService,
+    private readonly auditoria: AuditoriaService,
   ) {}
+
+  /** Seção 8.4: toda mudança de status da vaga feita pela empresa vai para a auditoria. */
+  private auditar(usuarioId: string, acao: string, vagaId: string, dados: Record<string, string | number | null>, tx?: Tx) {
+    return this.auditoria.registrar({ usuarioId, acao, entidade: 'Vaga', entidadeId: vagaId, dados }, tx);
+  }
 
   async listar(usuarioId: string, status?: StatusVaga) {
     const empresa = await this.empresas.daSessao(usuarioId);
@@ -170,6 +177,7 @@ export class VagasEmpresaService {
   async pausar(usuarioId: string, id: string) {
     const { empresa, vaga } = await this.vagaDaEmpresa(usuarioId, id);
     await this.transicionar(id, 'pausar', emConflito(() => transicaoVaga('pausar', vaga.status)));
+    await this.auditar(usuarioId, 'EMPRESA_PAUSOU_VAGA', id, { de: vaga.status, para: 'PAUSADA' });
     return this.obterDaEmpresa(empresa.id, id);
   }
 
@@ -179,6 +187,7 @@ export class VagasEmpresaService {
     const para = emConflito(() => transicaoVaga('reativar', vaga.status));
     if (prazoVencido(vaga.prazo, this.clock.agora())) throw regraDeNegocio('O prazo desta vaga já venceu; prorrogue o prazo para reabri-la.');
     await this.transicionar(id, 'reativar', para);
+    await this.auditar(usuarioId, 'EMPRESA_REATIVOU_VAGA', id, { de: vaga.status, para });
     return this.obterDaEmpresa(empresa.id, id);
   }
 
@@ -190,6 +199,7 @@ export class VagasEmpresaService {
     }
     const { count } = await this.prisma.vaga.updateMany({ where: { id, excluidaEm: null }, data: { excluidaEm: this.clock.agora() } });
     if (!count) throw naoEncontrado('Vaga não encontrada');
+    await this.auditar(usuarioId, 'EMPRESA_EXCLUIU_VAGA', id, { de: vaga.status });
   }
 
   /** EMP-07 / RN-11 / D21: novo prazo futuro e no máximo 1 ano após a publicação; vaga expirada volta para ABERTA. */
@@ -200,6 +210,7 @@ export class VagasEmpresaService {
     const prazo = validarPrazo(data, vaga.criadaEm, this.clock.agora());
     if (!prazo.ok) throw erroDeCampo('prazo', MENSAGENS_PRAZO[prazo.erro]);
     await this.transicionar(id, acao, para, { prazo: prazo.prazo, lembreteEnviadoEm: null });
+    await this.auditar(usuarioId, 'EMPRESA_PRORROGOU_VAGA', id, { de: vaga.status, para, prazoAnterior: vaga.prazo.toISOString(), prazo: prazo.prazo.toISOString() });
     return this.obterDaEmpresa(empresa.id, id);
   }
 
@@ -219,7 +230,9 @@ export class VagasEmpresaService {
           data: { status: 'ENCERRADA', motivoEncerramento: 'MANUAL', encerradaEm: agora, versao: { increment: 1 } },
         });
         if (!count) throw conflito('A vaga mudou de estado enquanto você agia. Recarregue a página.');
-        return this.encerramento.devolutiva(tx, { vagaId: id, motivo: 'MANUAL', selecionados, autorId: usuarioId, agora });
+        const r = await this.encerramento.devolutiva(tx, { vagaId: id, motivo: 'MANUAL', selecionados, autorId: usuarioId, agora });
+        await this.auditar(usuarioId, 'EMPRESA_ENCERROU_VAGA', id, { de: vaga.status, para: 'ENCERRADA', ...r }, tx);
+        return r;
       });
       return { ...(await this.obterDaEmpresa(empresa.id, id)), resultado };
     } catch (e) {

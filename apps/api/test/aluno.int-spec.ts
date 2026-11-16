@@ -160,6 +160,8 @@ describe('Aluno', () => {
       await outra.post('/auth/refresh').expect(401);
       await cli.post('/auth/refresh').expect(200); // este dispositivo recebeu sessão nova
       await new Cliente(app).login(c.aluno.email, 'Nova#Senha2026');
+      // ASVS 2.2.3: o titular é avisado da mudança de senha.
+      expect((await emailsPara(c.aluno.email)).map((e) => e.assunto)).toContain('Sua senha foi alterada');
     });
   });
 

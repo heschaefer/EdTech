@@ -58,7 +58,7 @@ export class InativacaoAlunosService {
 
   /** RN-27: reativar a faculdade reativa só quem foi inativado por esse motivo. */
   async reativarPorFaculdade(tx: Tx, faculdadeId: string) {
-    const alunos = await tx.aluno.findMany({ where: { faculdadeId, motivoInativacao: 'FACULDADE_INATIVA' }, select: { id: true, usuarioId: true } });
+    const alunos = await tx.aluno.findMany({ where: { faculdadeId, motivoInativacao: 'FACULDADE_INATIVA', anonimizadoEm: null }, select: { id: true, usuarioId: true } });
     if (!alunos.length) return;
     await tx.usuario.updateMany({ where: { id: { in: alunos.map((a) => a.usuarioId) }, status: 'INATIVO' }, data: { status: 'ATIVO' } });
     await tx.aluno.updateMany({ where: { id: { in: alunos.map((a) => a.id) } }, data: { motivoInativacao: null } });

@@ -10,3 +10,4 @@ export * from './schemas/empresa';
 export * from './schemas/vaga';
 export * from './schemas/candidatura';
 export * from './schemas/notificacao';
+export * from './schemas/lgpd';

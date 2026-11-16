@@ -1,5 +1,8 @@
 # API e worker usam a mesma imagem (seção 10); o comando decide o processo.
-FROM node:22-alpine AS base
+# Debian slim (glibc), não Alpine: o motor do Prisma é multithread e o malloc da musl virava gargalo
+# sob carga (teste de carga da Fase 7: ~4× menos vazão na imagem Alpine).
+FROM node:22-bookworm-slim AS base
+RUN apt-get update && apt-get install -y --no-install-recommends openssl wget ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /repo
 

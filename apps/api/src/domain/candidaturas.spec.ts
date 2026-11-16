@@ -37,6 +37,8 @@ describe('Candidaturas (regras de domínio)', () => {
   it('EMP-09 RN-19 perfil só com candidatura não cancelada', () => {
     expect(empresaVePerfil({ status: 'SELECIONADO', motivoCancelamento: null })).toBe(true);
     expect(empresaVePerfil({ status: 'CANCELADA', motivoCancelamento: 'ALUNO_INATIVO' })).toBe(false);
+    // Seção 8.4: titular excluído não tem perfil, mesmo com candidatura finalizada.
+    expect(empresaVePerfil({ status: 'NAO_SELECIONADO', motivoCancelamento: null, alunoAnonimizado: true })).toBe(false);
   });
 
   it('EMP-10 RN-15 mover etapa e não selecionar só com candidatura EM_PROCESSO', () => {

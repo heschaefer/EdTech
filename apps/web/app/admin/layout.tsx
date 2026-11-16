@@ -7,6 +7,7 @@ const LINKS = [
   { href: '/admin/faculdades', rotulo: 'Faculdades' },
   { href: '/admin/areas', rotulo: 'Áreas de formação' },
   { href: '/admin/empresas', rotulo: 'Empresas' },
+  { href: '/admin/auditoria', rotulo: 'Auditoria' },
 ];
 
 export default function LayoutAdmin({ children }: { children: ReactNode }) {

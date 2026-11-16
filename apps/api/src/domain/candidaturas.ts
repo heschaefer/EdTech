@@ -9,12 +9,12 @@ type CandidaturaParaEmpresa = { status: StatusCandidatura; motivoCancelamento: M
  */
 export const empresaVeNaLista = (c: CandidaturaParaEmpresa) => c.status !== 'CANCELADA' || c.motivoCancelamento === 'ALUNO_INATIVO';
 
-/** RN-19: perfil do aluno só com candidatura não cancelada. */
-export const empresaVePerfil = (c: CandidaturaParaEmpresa) => c.status !== 'CANCELADA';
+/** RN-19: perfil do aluno só com candidatura não cancelada (e de titular que não pediu exclusão, seção 8.4). */
+export const empresaVePerfil = (c: CandidaturaParaEmpresa & { alunoAnonimizado?: boolean }) => c.status !== 'CANCELADA' && !c.alunoAnonimizado;
 
 /** Mesmas regras como filtro Prisma. */
 export const FILTRO_LISTA_EMPRESA = { OR: [{ status: { not: 'CANCELADA' as const } }, { motivoCancelamento: 'ALUNO_INATIVO' as const }] };
-export const FILTRO_PERFIL_EMPRESA = { status: { not: 'CANCELADA' as const } };
+export const FILTRO_PERFIL_EMPRESA = { status: { not: 'CANCELADA' as const }, aluno: { anonimizadoEm: null } };
 
 /** ALU-07 / RN-10: a candidatura nasce (ou renasce) na primeira etapa, a de menor ordem. */
 export function primeiraEtapa<E extends { ordem: number }>(etapas: E[]): E {

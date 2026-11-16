@@ -13,6 +13,8 @@ const TITULOS: Record<number, string> = {
   404: 'Não encontrado',
   409: 'Conflito',
   422: 'Regra de negócio',
+  413: 'Requisição grande demais',
+  415: 'Tipo de conteúdo não suportado',
   429: 'Muitas requisições',
   500: 'Erro interno',
 };
@@ -71,6 +73,11 @@ export class ProblemFilter implements ExceptionFilter {
       const detail = typeof resp === 'string' ? resp : (resp as { message?: unknown }).message;
       return base(status, typeof detail === 'string' ? { detail } : {});
     }
+    // Erros do body-parser (antes do Nest): JSON malformado, corpo acima de 100 kB, charset inválido.
+    const corpo = e as { type?: string } | null;
+    if (corpo?.type === 'entity.parse.failed') return base(400, { detail: 'JSON inválido' });
+    if (corpo?.type === 'entity.too.large') return base(413, { detail: 'O corpo da requisição passa do limite de 100 kB' });
+    if (corpo?.type === 'charset.unsupported' || corpo?.type === 'encoding.unsupported') return base(415, { detail: 'Codificação não suportada' });
     return base(HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }

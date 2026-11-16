@@ -16,6 +16,7 @@ type Candidato = {
   id: string;
   status: StatusCandidatura;
   alunoInativo: boolean;
+  alunoRemovido?: boolean;
   criadaEm: string;
   atualizadaEm: string;
   etapa: { id: string; nome: string; ordem: number } | null;
@@ -129,13 +130,13 @@ export default function CandidatosVaga({ params }: { params: Promise<{ id: strin
               <tr key={c.id} className="border-t border-slate-100">
                 <td className="px-4 py-3">
                   {/* D17: inativo não abre o perfil. */}
-                  {c.alunoInativo ? (
+                  {c.alunoInativo || c.alunoRemovido ? (
                     <span className="font-medium text-slate-700">{c.aluno.nome}</span>
                   ) : (
                     <Link href={`/empresa/candidaturas/${c.id}`} className="font-medium text-indigo-700 hover:underline">{c.aluno.nome}</Link>
                   )}
                 </td>
-                <td className="px-4 py-3">{c.alunoInativo ? '—' : `${c.aluno.faculdade} · ${c.aluno.curso}`}</td>
+                <td className="px-4 py-3">{c.alunoInativo || c.alunoRemovido ? '—' : `${c.aluno.faculdade} · ${c.aluno.curso}`}</td>
                 <td className="px-4 py-3 tabular-nums">{c.aluno.semestre ? `${c.aluno.semestre}º` : '—'}</td>
                 <td className="px-4 py-3">{c.status === 'EM_PROCESSO' ? c.etapa?.nome : '—'}</td>
                 <td className="px-4 py-3"><StatusCandidaturaSelo status={c.status} inativo={c.alunoInativo} /></td>

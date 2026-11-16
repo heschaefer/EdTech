@@ -247,6 +247,7 @@ model Aluno {
   turmaId         String        @db.Uuid
   semestreAtual   Int
   motivoInativacao MotivoInativacao? // null enquanto ativo (RN-22, RN-27)
+  anonimizadoEm   DateTime?     // seção 8.4: exclusão a pedido do titular; só restam agregados
   termosVersao    String
   termosAceitosEm DateTime
   usuario         Usuario       @relation(fields: [usuarioId], references: [id])
