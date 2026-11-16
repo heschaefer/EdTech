@@ -99,3 +99,23 @@ export async function emailsPara(para: string): Promise<Email[]> {
 }
 
 export const tokenDoEmail = (email: Email) => /token=([\w-]+)/.exec(email.texto)?.[1] ?? '';
+
+/** Vaga válida (EMP-03) com prazo daqui a `diasPrazo` dias. */
+export function vagaMinima(areaId: string, extra: object = {}, diasPrazo = 20) {
+  const prazo = new Date(Date.now() + diasPrazo * 24 * 3600_000).toISOString().slice(0, 10);
+  return {
+    funcao: 'Estágio em engenharia',
+    tipo: 'ESTAGIO',
+    modalidade: 'REMOTO',
+    areaIds: [areaId],
+    atividades: 'Atividades',
+    requisitos: 'Requisitos',
+    salario: { aCombinar: true },
+    beneficios: 'VR',
+    processoSeletivo: 'Triagem',
+    cultura: 'Cultura',
+    etapas: [{ nome: 'Triagem' }],
+    prazo,
+    ...extra,
+  };
+}

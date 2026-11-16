@@ -1,5 +1,5 @@
-import { EmConstrucao } from '@/components/painel';
+import { redirect } from 'next/navigation';
 
 export default function InicioEmpresa() {
-  return <EmConstrucao fase={4} oQue="O painel da empresa" />;
+  redirect('/empresa/vagas');
 }

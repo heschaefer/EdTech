@@ -1,0 +1,111 @@
+'use client';
+
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Botao, Campo, Cartao } from '@vagas/ui';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, use, useState } from 'react';
+import { Aviso } from '@/components/aviso';
+import { FormVaga } from '@/components/empresa/form-vaga';
+import { StatusVaga } from '@/components/empresa/status-vaga';
+import type { Vaga } from '@/components/empresa/tipos';
+import { useAcao } from '@/lib/acoes';
+import { api } from '@/lib/api';
+import { dataCivilSP, formatarData } from '@/lib/formatar';
+
+export default function Pagina({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  return (
+    <Suspense>
+      <VagaEmpresa id={id} />
+    </Suspense>
+  );
+}
+
+/** EMP-04 a EMP-07 */
+function VagaEmpresa({ id }: { id: string }) {
+  const router = useRouter();
+  const qc = useQueryClient();
+  const publicada = useSearchParams().get('publicada');
+  const chave = ['empresa-vaga', id];
+  const { data: vaga, isError } = useQuery({ queryKey: chave, queryFn: () => api<Vaga>(`/empresa/vagas/${id}`) });
+  const { mensagem, setMensagem, executar } = useAcao(chave, ['empresa-vagas']);
+  const [editando, setEditando] = useState(false);
+  const [novoPrazo, setNovoPrazo] = useState('');
+
+  if (isError) return <Aviso tipo="erro">Vaga não encontrada.</Aviso>;
+  if (!vaga) return <p>Carregando…</p>;
+  const encerrada = vaga.status === 'ENCERRADA';
+  const acao = (rota: string, texto: string, corpo?: object) => executar(() => api(`/empresa/vagas/${id}/${rota}`, { method: 'POST', corpo }), texto);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Link href="/empresa/vagas" className="text-sm text-indigo-700 hover:underline">← Vagas</Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">{vaga.funcao}</h1>
+          <p className="mt-1 flex items-center gap-2 text-sm text-slate-600">
+            <StatusVaga status={vaga.status} /> Prazo: {formatarData(vaga.prazo)} · {vaga.areas.map((a) => a.nome).join(', ')}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {vaga.status === 'ABERTA' && <Botao variante="secundario" onClick={() => acao('pausar', 'Vaga pausada: saiu da listagem e não recebe novas candidaturas.')}>Pausar</Botao>}
+          {vaga.status === 'PAUSADA' && <Botao variante="secundario" onClick={() => acao('reativar', 'Vaga reativada.')}>Reativar</Botao>}
+          {!encerrada && !editando && <Botao variante="secundario" onClick={() => (setEditando(true), setMensagem(null))}>Editar</Botao>}
+          {/* D10: com candidaturas a ação é Encerrar (Fase 6). */}
+          {!vaga.jaTeveCandidatura && (
+            <Botao
+              variante="perigo"
+              onClick={async () => {
+                if (confirm(`Excluir a vaga ${vaga.funcao}?`) && (await executar(() => api(`/empresa/vagas/${id}`, { method: 'DELETE' }), 'Vaga excluída.'))) router.replace('/empresa/vagas');
+              }}
+            >
+              Excluir
+            </Botao>
+          )}
+        </div>
+      </div>
+      {publicada && !mensagem && <Aviso tipo="sucesso">Vaga publicada: já aparece para os alunos das áreas escolhidas.</Aviso>}
+      {mensagem && <Aviso tipo={mensagem.tipo}>{mensagem.texto}</Aviso>}
+
+      {!encerrada && (
+        <Cartao>
+          <h2 className="mb-1 text-lg font-semibold">Prorrogar prazo</h2>
+          <p className="mb-3 text-sm text-slate-600">Até 1 ano após a publicação ({formatarData(vaga.criadaEm)}). O prazo vale até 23:59 (horário de Brasília).</p>
+          <form
+            className="flex flex-wrap items-end gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              executar(() => api(`/empresa/vagas/${id}/prorrogar`, { method: 'POST', corpo: { prazo: novoPrazo } }), `Prazo prorrogado para ${novoPrazo.split('-').reverse().join('/')}.`, () => setNovoPrazo(''));
+            }}
+          >
+            <div className="w-48">
+              <Campo rotulo="Novo prazo" type="date" min={dataCivilSP(new Date())} value={novoPrazo} onChange={(e) => setNovoPrazo(e.target.value)} />
+            </div>
+            <Botao type="submit" variante="secundario" disabled={!novoPrazo}>Prorrogar</Botao>
+          </form>
+        </Cartao>
+      )}
+
+      {editando ? (
+        <FormVaga
+          vaga={vaga}
+          aoSalvar={(v) => {
+            qc.setQueryData(chave, v);
+            qc.invalidateQueries({ queryKey: ['empresa-vagas'] });
+            setEditando(false);
+            setMensagem({ tipo: 'sucesso', texto: 'Alterações salvas.' });
+          }}
+        />
+      ) : (
+        <Cartao>
+          <h2 className="mb-3 text-lg font-semibold">Etapas do processo seletivo</h2>
+          <ol className="list-inside list-decimal text-sm">
+            {vaga.etapas.map((e) => <li key={e.id}>{e.nome}</li>)}
+          </ol>
+          <p className="mt-4 text-sm text-slate-600">A lista de candidatos por etapa chega na Fase 5.</p>
+        </Cartao>
+      )}
+    </div>
+  );
+}

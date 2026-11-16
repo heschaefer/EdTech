@@ -5,7 +5,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     rules: {
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }],
       // Seção 8.3: só consultas Prisma parametrizadas
       'no-restricted-properties': [
         'error',

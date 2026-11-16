@@ -12,7 +12,8 @@ Stack: NestJS + Prisma (PostgreSQL) · Next.js 15 + Tailwind v4 · BullMQ (Redis
 | 1 · Autenticação e admin | ✅ AUTH-01 a AUTH-05, CSRF, rate limit, bloqueio, 2FA TOTP do admin, guards de papel, middleware do Next, ADM-01 a ADM-03, FAC-01 (aceite do convite), SEG-01 (parcial) e SEG-03 a SEG-08, SEG-10 |
 | 2 · Faculdade | ✅ FAC-02 (dados cadastrais), FAC-03 (cursos com geração de semestres), FAC-04 (grade de aulas), FAC-05 (turmas) |
 | 3 · Aluno | ✅ ALU-01 (cadastro em 3 passos, CPF cifrado), ALU-02 a ALU-04 (perfil, senha, vínculo, currículo), FAC-06 (lista e desligamento), ALU-12 (troca de faculdade), RN-03 (limpeza de cadastros não verificados no worker) |
-| 4 a 7 | Pendentes. Vagas, candidaturas e o painel da empresa mostram "Em construção" |
+| 4 · Empresa e vagas | ✅ EMP-01 e EMP-02 (cadastro com ViaCEP e perfil), ADM-04 e ADM-05 (aprovação e gestão de empresas), EMP-03 a EMP-07 (criar, editar com versão, pausar, excluir, prorrogar), ALU-05 e ALU-06 (lista com filtros na URL e detalhe). Adiantado da Fase 6: o outbox que envia por e-mail cada notificação in-app (RN-23) |
+| 5 a 7 | Pendentes. Candidaturas, central de notificações, encerramento e jobs de prazo |
 
 `pnpm spec:pendentes` lista quais IDs da spec ainda não têm teste.
 
@@ -88,6 +89,11 @@ docs/spec.md  A spec (lida pelo spec:check)
 - **Rate limit no E2E:** `RATE_LIMIT_FATOR` (padrão 1) multiplica só os limites por IP; o compose de teste usa 100 porque todos os testes saem do mesmo IP. Os limites por e-mail (login, esqueci a senha) não mudam, e o SEG-05 continua valendo.
 - **Troca de faculdade (ALU-12):** exige e-mail de **outra** faculdade cliente, para um aluno desligado não se reativar com outro e-mail da mesma faculdade. Ao confirmar, o e-mail de login passa a ser o novo.
 - **Desligamento (FAC-06):** o motivo vai para a auditoria (`FACULDADE_DESLIGOU_ALUNO`). Reativar não restaura as candidaturas canceladas.
+- **Nova análise da empresa (RN-26):** `POST /empresa/me/solicitar-analise` volta o cadastro reprovado para "aguardando análise".
+- **Prazo da vaga:** só muda pela prorrogação (EMP-07); o `PATCH` da vaga não aceita `prazo`. Toda ação na vaga (editar, pausar, reativar, prorrogar) incrementa a `versao`.
+- **Inativar empresa (ADM-05):** bloqueia o login e pausa as vagas abertas; reativar libera o login, e as vagas ficam pausadas até a empresa reativá-las.
+- **Filtro de salário (ALU-05):** compara com o máximo da faixa (ou o mínimo, se só ele existir); vagas "a combinar" saem do resultado quando o filtro está ativo.
+- **Selo "Candidatado":** aparece para candidatura em qualquer status, menos cancelada.
 - **Disponibilidade no currículo:** manhã, tarde, noite e integral como múltipla escolha, gravadas separadas por vírgula no campo de texto do schema.
 - **E-mails:** templates HTML simples por enquanto; a migração para React Email (seção 10) fica pendente.
 - **spec:check:** lê os títulos dos testes direto dos arquivos (`it`, `test`, `describe`), sem precisar rodar as suítes.

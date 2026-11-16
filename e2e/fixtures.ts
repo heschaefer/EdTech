@@ -1,6 +1,7 @@
 import { test as base, expect, type APIRequestContext, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { authenticator } from 'otplib';
+import { dadosEmpresa } from './helpers';
 
 const API = '/api/v1';
 type Conta = { id: string; email: string; senha: string };
@@ -32,6 +33,17 @@ export class TestApi {
     expect(res.ok()).toBeTruthy();
     const a = (await res.json()) as { email: string; senha: string; totpSecret: string };
     return { ...a, codigo: () => authenticator.generate(a.totpSecret) };
+  }
+
+  /** EMP-01: empresa cadastrada e com e-mail verificado, aguardando aprovação (ADM-04). */
+  async empresaPendente() {
+    const dados = dadosEmpresa();
+    const res = await this.request.post(`${API}/auth/empresas`, { data: dados });
+    expect(res.status()).toBe(201);
+    const email = await this.ultimoEmailPara(dados.email, { assunto: /Confirme seu e-mail/ });
+    const token = new URLSearchParams((await this.linkDoEmail(email.ID)).split('?')[1]).get('token');
+    expect((await this.request.post(`${API}/auth/verificar-email`, { data: { token } })).ok()).toBeTruthy();
+    return dados;
   }
 
   async moverPrazo(vagaId: string, prazo: Date) {

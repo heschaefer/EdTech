@@ -38,17 +38,18 @@ export class ProblemFilter implements ExceptionFilter {
     const base = (status: number, extra: Record<string, unknown> = {}) => ({
       type: 'about:blank',
       title: TITULOS[status] ?? 'Erro',
-      status,
       ...extra,
+      status,
     });
 
     if (e instanceof Problema) {
+      // Extras vêm antes: nunca sobrescrevem os campos padrão do problem+json (status, type…).
       return base(e.getStatus(), {
+        ...(e.extras ?? {}),
         ...(e.tipo ? { type: e.tipo } : {}),
         title: e.titulo,
         ...(e.detalhe ? { detail: e.detalhe } : {}),
         ...(e.erros ? { errors: e.erros } : {}),
-        ...(e.extras ?? {}),
       });
     }
     if (e instanceof ZodValidationException) {

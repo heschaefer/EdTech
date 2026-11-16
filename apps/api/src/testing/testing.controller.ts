@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, NotImplementedException, Param, ParseUUIDPi
 import { SkipThrottle } from '@nestjs/throttler';
 import { z } from 'zod';
 import { Public } from '../common/decorators';
+import { OutboxService } from '../modules/notificacoes/outbox.service';
 import { TestingService, type OpcoesCenario } from './testing.service';
 
 const cenarioSchema = z
@@ -20,7 +21,10 @@ const JOBS = ['expirar-prazos', 'lembrete', 'encerrar-automatico', 'enviar-email
 @SkipThrottle()
 @Controller('__test__')
 export class TestingController {
-  constructor(private readonly testing: TestingService) {}
+  constructor(
+    private readonly testing: TestingService,
+    private readonly outbox: OutboxService,
+  ) {}
 
   @Post('reset')
   @HttpCode(204)
@@ -45,9 +49,11 @@ export class TestingController {
   }
 
   @Post('jobs/:nome')
-  job(@Param('nome') nome: string) {
-    z.enum(JOBS).parse(nome);
-    // Os jobs de prazo e o outbox de e-mail entram na Fase 6.
+  @HttpCode(200)
+  async job(@Param('nome') nome: string) {
+    const job = z.enum(JOBS).parse(nome);
+    if (job === 'enviar-emails') return { processados: await this.outbox.processar() };
+    // Os jobs de prazo entram na Fase 6.
     throw new NotImplementedException(`Job ${nome} ainda não implementado (Fase 6)`);
   }
 }

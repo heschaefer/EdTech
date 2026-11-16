@@ -90,6 +90,9 @@ export function FormLogin() {
         <Link href="/cadastro/aluno" className="text-indigo-700 hover:underline">
           Sou aluno e quero criar minha conta
         </Link>
+        <Link href="/cadastro/empresa" className="text-indigo-700 hover:underline">
+          Sou empresa e quero publicar vagas
+        </Link>
       </div>
     </Cartao>
   );

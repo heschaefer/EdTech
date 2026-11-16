@@ -31,6 +31,11 @@ describe('Segurança', () => {
       { metodo: 'patch', url: '/alunos/me/vinculo', permitidos: ['ALUNO'] },
       { metodo: 'get', url: '/alunos/me/curriculo', permitidos: ['ALUNO'] },
       { metodo: 'post', url: '/alunos/me/troca-faculdade', permitidos: ['ALUNO'] },
+      { metodo: 'get', url: '/vagas', permitidos: ['ALUNO'] },
+      { metodo: 'get', url: '/empresa/me', permitidos: ['EMPRESA'] },
+      { metodo: 'get', url: '/empresa/vagas', permitidos: ['EMPRESA'] },
+      { metodo: 'post', url: '/empresa/vagas', permitidos: ['EMPRESA'] },
+      { metodo: 'get', url: '/admin/empresas', permitidos: ['ADMIN'] },
     ];
     const clientes: Record<string, Cliente> = {};
 

@@ -1,16 +1,5 @@
 import { expect, semViolacoesGraves, test } from '../fixtures';
-
-const sufixo = () => Math.random().toString(36).slice(2, 8);
-const cnpjValido = () => {
-  const base = Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)).join('') + '0001';
-  const dv = (b: string, pesos: number[]) => {
-    const r = [...b].reduce((s, d, i) => s + Number(d) * pesos[i], 0) % 11;
-    return r < 2 ? 0 : 11 - r;
-  };
-  const p1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-  const d1 = dv(base, p1);
-  return `${base}${d1}${dv(base + d1, [6, ...p1])}`;
-};
+import { cnpjValido, sufixo } from '../helpers';
 
 test.describe('Admin @admin', () => {
   test.beforeEach(async ({ api, entrarComo }) => {
@@ -97,5 +86,56 @@ test.describe('Admin @admin', () => {
     const renomeada = page.getByRole('row', { name: new RegExp(`${nome} 2`) });
     await renomeada.getByRole('button', { name: `Inativar ${nome} 2` }).click();
     await expect(renomeada).toContainText('Inativa');
+  });
+
+  test('ADM-04 aprova a empresa pendente; ela recebe o resultado por e-mail e pode publicar', async ({ page, api, browser }) => {
+    const empresa = await api.empresaPendente();
+    await page.goto('/admin/empresas');
+    await semViolacoesGraves(page);
+    await page.getByLabel('Buscar por nome, CNPJ ou e-mail').fill(empresa.nomeFantasia);
+    await page.getByRole('button', { name: `Ver dados de ${empresa.nomeFantasia}` }).click();
+    await expect(page.getByText('Avenida Paulista, 1000')).toBeVisible();
+    await page.getByRole('button', { name: `Aprovar ${empresa.nomeFantasia}` }).click();
+    await expect(page.getByRole('status').filter({ hasText: `${empresa.nomeFantasia} aprovada.` })).toBeVisible();
+
+    await api.rodarJob('enviar-emails');
+    expect((await api.ultimoEmailPara(empresa.email, { assunto: /Cadastro aprovado/ })).Subject).toBe('Cadastro aprovado');
+
+    const emp = await (await browser.newContext()).newPage();
+    await emp.request.post('/api/v1/auth/login', { data: { email: empresa.email, senha: empresa.senha } });
+    await emp.goto('/empresa/vagas');
+    await expect(emp.getByRole('link', { name: 'Nova vaga' })).toBeVisible();
+  });
+
+  test('ADM-04 reprova com motivo; a empresa vê o motivo e pede nova análise', async ({ page, api, browser }) => {
+    const empresa = await api.empresaPendente();
+    await page.goto('/admin/empresas');
+    await page.getByLabel('Buscar por nome, CNPJ ou e-mail').fill(empresa.nomeFantasia);
+    await page.getByRole('button', { name: `Reprovar ${empresa.nomeFantasia}` }).click();
+    await page.getByLabel('Motivo da reprovação').fill('Ramo de atuação genérico');
+    await page.getByRole('button', { name: 'Confirmar reprovação' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'reprovada' })).toBeVisible();
+
+    const emp = await (await browser.newContext()).newPage();
+    await emp.request.post('/api/v1/auth/login', { data: { email: empresa.email, senha: empresa.senha } });
+    await emp.goto('/empresa/perfil');
+    await expect(emp.getByRole('alert').filter({ hasText: 'Ramo de atuação genérico' })).toBeVisible();
+    await emp.getByLabel('Ramo de atuação').fill('Energia solar residencial');
+    await emp.getByRole('button', { name: 'Salvar perfil' }).click();
+    await emp.getByRole('button', { name: 'Solicitar nova análise' }).click();
+    await expect(emp.getByRole('status').filter({ hasText: 'Cadastro em análise' })).toBeVisible();
+  });
+
+  test('ADM-05 inativar a empresa pausa as vagas abertas', async ({ page, api, request }) => {
+    const c = await api.cenario();
+    await page.goto('/admin/empresas');
+    await page.getByLabel('Aprovação').selectOption('');
+    await page.getByLabel('Buscar por nome, CNPJ ou e-mail').fill(c.empresa.email);
+    const nome = (await page.getByRole('list', { name: 'Empresas' }).getByRole('heading').first().textContent())!;
+    page.once('dialog', (d) => d.accept());
+    await page.getByRole('button', { name: `Inativar ${nome}` }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'vagas abertas pausadas' })).toBeVisible();
+    const login = await request.post('/api/v1/auth/login', { data: { email: c.empresa.email, senha: c.empresa.senha } });
+    expect(login.status()).toBe(401);
   });
 });

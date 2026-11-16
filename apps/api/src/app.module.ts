@@ -13,6 +13,9 @@ import { conexaoRedis } from './modules/email/redis';
 import { AdminModule } from './modules/admin/admin.module';
 import { FaculdadeModule } from './modules/faculdade/faculdade.module';
 import { ManutencaoModule } from './modules/manutencao/manutencao.module';
+import { OutboxModule } from './modules/notificacoes/outbox.module';
+import { EmpresasModule } from './modules/empresas/empresas.module';
+import { VagasModule } from './modules/vagas/vagas.module';
 import { AlunosModule } from './modules/alunos/alunos.module';
 import { AreasModule } from './modules/areas/areas.controller';
 import { SaudeModule } from './modules/saude.controller';
@@ -46,6 +49,9 @@ export class AppModule implements OnApplicationShutdown {
         AdminModule,
         FaculdadeModule,
         ManutencaoModule,
+        OutboxModule,
+        EmpresasModule,
+        VagasModule,
         // Seção 8.3 / SEG-08: o módulo /__test__ só existe em NODE_ENV=test com ENABLE_TEST_ROUTES=true.
         ...(rotasDeTesteAtivas() ? [TestingModule] : []),
       ],

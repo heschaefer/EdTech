@@ -6,12 +6,16 @@ import {
   criarFaculdadeSchema,
   dominioInputSchema,
   filtroFaculdadesSchema,
+  atualizarEmpresaAdminSchema,
+  filtroEmpresasSchema,
+  reprovarEmpresaSchema,
 } from '@vagas/contracts';
 import type { Request } from 'express';
 import { createZodDto } from 'nestjs-zod';
 import { Roles, UsuarioAtual } from '../../common/decorators';
 import type { UsuarioSessao } from '../../common/sessao';
 import { AdminAreasService } from './admin-areas.service';
+import { AdminEmpresasService } from './admin-empresas.service';
 import { AdminFaculdadesService } from './admin-faculdades.service';
 
 class CriarFaculdadeDto extends createZodDto(criarFaculdadeSchema) {}
@@ -20,6 +24,9 @@ class DominioDto extends createZodDto(dominioInputSchema) {}
 class CriarAreaDto extends createZodDto(criarAreaSchema) {}
 class AtualizarAreaDto extends createZodDto(atualizarAreaSchema) {}
 class FiltroFaculdadesDto extends createZodDto(filtroFaculdadesSchema) {}
+class FiltroEmpresasDto extends createZodDto(filtroEmpresasSchema) {}
+class ReprovarDto extends createZodDto(reprovarEmpresaSchema) {}
+class AtivaEmpresaDto extends createZodDto(atualizarEmpresaAdminSchema) {}
 
 const ator = (u: UsuarioSessao, req: Request) => ({ id: u.id, ip: req.ip });
 
@@ -29,6 +36,7 @@ export class AdminController {
   constructor(
     private readonly faculdades: AdminFaculdadesService,
     private readonly areas: AdminAreasService,
+    private readonly empresas: AdminEmpresasService,
   ) {}
 
   // ---------- ADM-01 / ADM-02 ----------
@@ -89,5 +97,33 @@ export class AdminController {
   @HttpCode(204)
   excluirArea(@Param('id', ParseUUIDPipe) id: string, @UsuarioAtual() u: UsuarioSessao, @Req() req: Request) {
     return this.areas.excluir(id, ator(u, req));
+  }
+
+  // ---------- ADM-04 / ADM-05 ----------
+  @Get('empresas')
+  listarEmpresas(@Query() q: FiltroEmpresasDto) {
+    return this.empresas.listar(q);
+  }
+
+  @Get('empresas/:id')
+  obterEmpresa(@Param('id', ParseUUIDPipe) id: string) {
+    return this.empresas.obter(id);
+  }
+
+  @Post('empresas/:id/aprovar')
+  @HttpCode(200)
+  aprovar(@Param('id', ParseUUIDPipe) id: string, @UsuarioAtual() u: UsuarioSessao, @Req() req: Request) {
+    return this.empresas.aprovar(id, ator(u, req));
+  }
+
+  @Post('empresas/:id/reprovar')
+  @HttpCode(200)
+  reprovar(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReprovarDto, @UsuarioAtual() u: UsuarioSessao, @Req() req: Request) {
+    return this.empresas.reprovar(id, dto.motivo, ator(u, req));
+  }
+
+  @Patch('empresas/:id')
+  ativaEmpresa(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AtivaEmpresaDto, @UsuarioAtual() u: UsuarioSessao, @Req() req: Request) {
+    return this.empresas.alterarAtiva(id, dto.ativa, ator(u, req));
   }
 }
