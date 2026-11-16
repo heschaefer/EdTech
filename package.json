@@ -1,0 +1,27 @@
+{
+  "name": "vagas-universitarias",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:int": "turbo run test:int",
+    "test:e2e": "pnpm --filter e2e e2e",
+    "spec:check": "node scripts/spec-check.mjs",
+    "spec:pendentes": "node scripts/spec-check.mjs --relatorio",
+    "chaves:gerar": "node scripts/gerar-chaves.mjs",
+    "db:migrate": "pnpm --filter api prisma:migrate",
+    "db:seed": "pnpm --filter api db:seed",
+    "db:seed:demo": "pnpm --filter api db:seed:demo"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "~5.9.3"
+  }
+}

@@ -1,0 +1,109 @@
+# Pipeline da seção 11.6.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: Lint, tipos, unitários e integração
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      # 1. lint, typecheck e prisma validate
+      - run: pnpm --filter api exec prisma validate
+        env: { DATABASE_URL: postgresql://x:x@localhost:5432/x }
+      - run: pnpm lint
+      - run: pnpm typecheck
+      # 2. unitários com cobertura (≥ 90% em src/domain)
+      - run: pnpm test
+      # 3. integração com Testcontainers (Postgres e Redis)
+      - run: pnpm test:int
+
+  e2e:
+    name: E2E (shard ${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: { shard: [1, 2, 3, 4] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/gerar-chaves.mjs
+      # 4. build das imagens e 5. E2E com o compose de teste
+      - run: docker compose -f docker-compose.test.yml up -d --build --wait
+      - run: pnpm --filter e2e exec playwright install --with-deps chromium firefox
+      - run: pnpm --filter e2e exec playwright test --shard=${{ matrix.shard }}/4 --reporter=blob
+        env: { CI: 'true', MAILPIT_URL: http://localhost:8025 }
+      - if: failure()
+        run: docker compose -f docker-compose.test.yml logs api worker web
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with: { name: blob-${{ matrix.shard }}, path: e2e/blob-report, retention-days: 7 }
+
+  relatorio-e2e:
+    name: Relatório E2E
+    if: ${{ !cancelled() }}
+    needs: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with: { path: e2e/blobs, pattern: blob-*, merge-multiple: true }
+      - run: pnpm --filter e2e exec playwright merge-reports --reporter=html ./blobs
+      - uses: actions/upload-artifact@v4
+        with: { name: relatorio-playwright, path: e2e/playwright-report, retention-days: 14 }
+
+  rastreabilidade:
+    name: spec:check e audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      # 6. todo ID da spec precisa de teste; vulnerabilidade alta bloqueia
+      - run: pnpm spec:check
+      - run: pnpm audit --audit-level high
+
+  seg-08:
+    name: SEG-08 imagem de produção sem /__test__
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node scripts/gerar-chaves.mjs
+      - run: docker build -f apps/api/Dockerfile -t vagas-api:prod .
+      - name: Sobe a imagem de produção e confirma 404
+        run: |
+          docker network create seg08
+          docker run -d --name pg --network seg08 -e POSTGRES_USER=v -e POSTGRES_PASSWORD=v -e POSTGRES_DB=v postgres:17-alpine
+          docker run -d --name redis --network seg08 redis:7-alpine
+          sleep 5
+          docker run -d --name api --network seg08 -p 3001:3001 --env-file .env \
+            -e NODE_ENV=production -e ENABLE_TEST_ROUTES=true \
+            -e DATABASE_URL=postgresql://v:v@pg:5432/v -e REDIS_URL=redis://redis:6379 \
+            vagas-api:prod sh -c "npx prisma migrate deploy && node dist/main.js"
+          for i in $(seq 30); do curl -sf localhost:3001/api/v1/saude && break; sleep 2; done
+          status=$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:3001/api/v1/__test__/reset)
+          echo "POST /__test__/reset → $status"
+          test "$status" = "404"

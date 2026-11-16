@@ -1,0 +1,65 @@
+# Ambiente local e de demonstração (D25): `docker compose up` sobe tudo; e-mails caem no Mailpit.
+name: vagas
+
+x-app-env: &app-env
+  NODE_ENV: development
+  DATABASE_URL: postgresql://vagas:vagas@postgres:5432/vagas?schema=public
+  REDIS_URL: redis://redis:6379
+  WEB_URL: http://localhost:3000
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: vagas
+      POSTGRES_PASSWORD: vagas
+      POSTGRES_DB: vagas
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vagas"]
+      interval: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["8025:8025", "1025:1025"]
+
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    env_file: .env
+    environment: *app-env
+    ports: ["3001:3001"]
+    command: sh -c "npx prisma migrate deploy && npx ts-node --transpile-only prisma/seed.ts && node dist/main.js"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  worker:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    env_file: .env
+    environment: *app-env
+    command: node dist/worker.js
+    depends_on:
+      api: { condition: service_started }
+
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    env_file: .env
+    environment:
+      API_URL: http://api:3001
+    ports: ["3000:3000"]
+    depends_on: [api]
+
+volumes:
+  pgdata:

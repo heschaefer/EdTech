@@ -1,0 +1,466 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Papel {
+  ALUNO
+  FACULDADE
+  EMPRESA
+  ADMIN
+}
+
+enum StatusUsuario {
+  PENDENTE_VERIFICACAO
+  ATIVO
+  INATIVO
+  BLOQUEADO
+}
+
+enum TipoTokenEmail {
+  VERIFICACAO
+  RESET_SENHA
+  CONVITE
+  TROCA_EMAIL
+}
+
+enum TipoVaga {
+  ESTAGIO
+  JOVEM_APRENDIZ
+  TRAINEE
+  CLT
+  PJ
+  TEMPORARIO
+}
+
+enum Modalidade {
+  PRESENCIAL
+  HIBRIDO
+  REMOTO
+}
+
+enum StatusVaga {
+  ABERTA
+  PAUSADA
+  PRAZO_EXPIRADO
+  ENCERRADA
+}
+
+enum MotivoEncerramento {
+  MANUAL
+  AUTOMATICO
+}
+
+enum StatusCandidatura {
+  EM_PROCESSO
+  SELECIONADO
+  NAO_SELECIONADO
+  CANCELADA
+}
+
+enum NivelIdioma {
+  BASICO
+  INTERMEDIARIO
+  AVANCADO
+  FLUENTE
+  NATIVO
+}
+
+enum MotivoCancelamento {
+  ALUNO_REMOVEU
+  ALUNO_INATIVO
+}
+
+enum MotivoInativacao {
+  DESLIGADO_PELA_FACULDADE
+  FACULDADE_INATIVA
+}
+
+enum StatusAprovacao {
+  PENDENTE
+  APROVADA
+  REPROVADA
+}
+
+enum TipoExperiencia {
+  EMPREGO
+  ESTAGIO
+  JOVEM_APRENDIZ
+  FREELANCE
+  VOLUNTARIADO
+  INICIACAO_CIENTIFICA
+  MONITORIA
+  EMPRESA_JUNIOR
+}
+
+enum NivelFormacao {
+  ENSINO_MEDIO
+  TECNICO
+  GRADUACAO
+  POS_GRADUACAO
+}
+
+enum SituacaoFormacao {
+  CURSANDO
+  CONCLUIDO
+  TRANCADO
+}
+
+// ---------- Identidade e sessão ----------
+model Usuario {
+  id                String         @id @default(uuid()) @db.Uuid
+  email             String         @unique // sempre minúsculo (RN-21)
+  senhaHash         String?        // argon2id; null até aceitar o convite
+  papel             Papel
+  status            StatusUsuario  @default(PENDENTE_VERIFICACAO)
+  emailVerificadoEm DateTime?
+  falhasLogin       Int            @default(0)
+  bloqueadoAte      DateTime?
+  totpSecretCifrado String?        // 2FA do admin
+  criadoEm          DateTime       @default(now())
+  atualizadoEm      DateTime       @updatedAt
+  aluno             Aluno?
+  empresa           Empresa?
+  faculdade         Faculdade?
+  refreshTokens     RefreshToken[]
+  tokensEmail       TokenEmail[]
+  notificacoes      Notificacao[]
+}
+
+model RefreshToken {
+  id               String    @id @default(uuid()) @db.Uuid
+  usuarioId        String    @db.Uuid
+  familia          String    @db.Uuid
+  tokenHash        String    @unique // SHA-256 do token opaco
+  expiraEm         DateTime
+  revogadoEm       DateTime?
+  substituidoPorId String?   @db.Uuid
+  criadoEm         DateTime  @default(now())
+  usuario          Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  @@index([familia])
+}
+
+model TokenEmail {
+  id        String         @id @default(uuid()) @db.Uuid
+  usuarioId String         @db.Uuid
+  tipo      TipoTokenEmail
+  tokenHash String         @unique
+  dados     Json?          // ex.: novo e-mail na troca de faculdade
+  expiraEm  DateTime
+  usadoEm   DateTime?
+  usuario   Usuario        @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Catálogo do admin ----------
+model AreaFormacao {
+  id     String     @id @default(uuid()) @db.Uuid
+  nome   String     @unique
+  ativa  Boolean    @default(true)
+  cursos Curso[]
+  vagas  VagaArea[]
+}
+
+// ---------- Faculdade ----------
+model Faculdade {
+  id           String             @id @default(uuid()) @db.Uuid
+  usuarioId    String             @unique @db.Uuid
+  cnpj         String             @unique @db.Char(14)
+  razaoSocial  String
+  nomeFantasia String
+  telefone     String
+  email        String
+  ativa        Boolean            @default(true)
+  usuario      Usuario            @relation(fields: [usuarioId], references: [id])
+  dominios     DominioFaculdade[]
+  cursos       Curso[]
+  alunos       Aluno[]
+}
+
+model DominioFaculdade {
+  id          String    @id @default(uuid()) @db.Uuid
+  faculdadeId String    @db.Uuid
+  dominio     String    @unique // ex.: aluno.unifoo.edu.br
+  faculdade   Faculdade @relation(fields: [faculdadeId], references: [id])
+}
+
+model Curso {
+  id          String       @id @default(uuid()) @db.Uuid
+  faculdadeId String       @db.Uuid
+  areaId      String       @db.Uuid
+  nome        String
+  duracaoAnos Int
+  ementa      String
+  ativo       Boolean      @default(true)
+  faculdade   Faculdade    @relation(fields: [faculdadeId], references: [id])
+  area        AreaFormacao @relation(fields: [areaId], references: [id])
+  semestres   Semestre[]
+  turmas      Turma[]
+  alunos      Aluno[]
+  @@unique([faculdadeId, nome])
+}
+
+model Semestre {
+  id      String @id @default(uuid()) @db.Uuid
+  cursoId String @db.Uuid
+  ano     Int    // 1..duracaoAnos
+  periodo Int    // 1 ou 2
+  ordem   Int    // 1..duracaoAnos*2
+  curso   Curso  @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  aulas   Aula[]
+  @@unique([cursoId, ordem])
+}
+
+model Aula {
+  id         String   @id @default(uuid()) @db.Uuid
+  semestreId String   @db.Uuid
+  nome       String
+  ementa     String
+  ordem      Int
+  semestre   Semestre @relation(fields: [semestreId], references: [id], onDelete: Cascade)
+}
+
+model Turma {
+  id              String  @id @default(uuid()) @db.Uuid
+  cursoId         String  @db.Uuid
+  anoIngresso     Int
+  periodoIngresso Int     @default(1)
+  ativa           Boolean @default(true)
+  curso           Curso   @relation(fields: [cursoId], references: [id])
+  alunos          Aluno[]
+  @@unique([cursoId, anoIngresso, periodoIngresso])
+}
+
+// ---------- Aluno ----------
+model Aluno {
+  id              String        @id @default(uuid()) @db.Uuid
+  usuarioId       String        @unique @db.Uuid
+  nome            String
+  cpfHash         String        @unique // HMAC-SHA256: índice cego (RN-02)
+  cpfCifrado      String        // AES-256-GCM
+  telefone        String
+  faculdadeId     String        @db.Uuid
+  cursoId         String        @db.Uuid
+  turmaId         String        @db.Uuid
+  semestreAtual   Int
+  motivoInativacao MotivoInativacao? // null enquanto ativo (RN-22, RN-27)
+  termosVersao    String
+  termosAceitosEm DateTime
+  usuario         Usuario       @relation(fields: [usuarioId], references: [id])
+  faculdade       Faculdade     @relation(fields: [faculdadeId], references: [id])
+  curso           Curso         @relation(fields: [cursoId], references: [id])
+  turma           Turma         @relation(fields: [turmaId], references: [id])
+  curriculo       Curriculo?
+  candidaturas    Candidatura[]
+  @@index([cursoId])
+}
+
+// Nome, e-mail e telefone vêm de Aluno/Usuario; a graduação atual vem do vínculo (curso, turma, semestre)
+model Curriculo {
+  id                         String              @id @default(uuid()) @db.Uuid
+  alunoId                    String              @unique @db.Uuid
+  objetivo                   String?             // até 200 caracteres
+  resumo                     String?             // até 1 000 caracteres
+  cidade                     String?
+  uf                         String?             @db.Char(2)
+  habilidadesTecnicas        String[]
+  habilidadesComportamentais String[]
+  links                      Json                @default("[]") // [{ tipo: linkedin | github | portfolio | lattes | outro, url }]
+  disponibilidade            String?             // manhã, tarde, noite, integral
+  informacoesAdicionais      String?             // CNH, viagem, mudança, prêmios
+  atualizadoEm               DateTime            @updatedAt
+  aluno                      Aluno               @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  formacoes                  FormacaoAcademica[]
+  experiencias               Experiencia[]
+  cursos                     CursoComplementar[]
+  idiomas                    Idioma[]
+  projetos                   Projeto[]
+}
+
+model FormacaoAcademica {
+  id          String           @id @default(uuid()) @db.Uuid
+  curriculoId String           @db.Uuid
+  nivel       NivelFormacao
+  curso       String
+  instituicao String
+  inicio      DateTime?        @db.Date
+  conclusao   DateTime?        @db.Date
+  situacao    SituacaoFormacao
+  curriculo   Curriculo        @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+}
+
+model Experiencia {
+  id          String          @id @default(uuid()) @db.Uuid
+  curriculoId String          @db.Uuid
+  tipo        TipoExperiencia
+  organizacao String
+  cargo       String
+  inicio      DateTime        @db.Date
+  fim         DateTime?       @db.Date // null = atual
+  descricao   String?         // atividades e resultados
+  curriculo   Curriculo       @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+}
+
+model CursoComplementar {
+  id             String    @id @default(uuid()) @db.Uuid
+  curriculoId    String    @db.Uuid
+  nome           String
+  instituicao    String
+  cargaHoraria   Int?      // em horas
+  conclusao      DateTime? @db.Date
+  certificadoUrl String?
+  curriculo      Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+}
+
+model Projeto {
+  id          String    @id @default(uuid()) @db.Uuid
+  curriculoId String    @db.Uuid
+  titulo      String
+  descricao   String
+  link        String?
+  curriculo   Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+}
+
+model Idioma {
+  id          String      @id @default(uuid()) @db.Uuid
+  curriculoId String      @db.Uuid
+  idioma      String
+  nivel       NivelIdioma
+  curriculo   Curriculo   @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Empresa e vagas ----------
+model Empresa {
+  id           String  @id @default(uuid()) @db.Uuid
+  usuarioId    String  @unique @db.Uuid
+  cnpj         String  @unique @db.Char(14)
+  razaoSocial  String
+  nomeFantasia String
+  telefone     String
+  email        String
+  ramoAtuacao  String
+  cep          String  @db.Char(8)
+  logradouro   String
+  numero       String
+  complemento  String?
+  bairro       String
+  cidade       String
+  uf           String  @db.Char(2)
+  ativa        Boolean @default(true)
+  aprovacao    StatusAprovacao @default(PENDENTE) // RN-26
+  aprovacaoMotivo String?
+  aprovadaEm   DateTime?
+  usuario      Usuario @relation(fields: [usuarioId], references: [id])
+  vagas        Vaga[]
+}
+
+model Vaga {
+  id                 String              @id @default(uuid()) @db.Uuid
+  empresaId          String              @db.Uuid
+  funcao             String
+  tipo               TipoVaga
+  modalidade         Modalidade
+  atividades         String
+  requisitos         String              // o que se espera
+  salarioMin         Decimal?            @db.Decimal(10, 2) // null = a combinar
+  salarioMax         Decimal?            @db.Decimal(10, 2)
+  beneficios         String
+  processoSeletivo   String
+  cultura            String
+  cidade             String?
+  uf                 String?             @db.Char(2)
+  semestreMinimo     Int?                // opcional (D22)
+  status             StatusVaga          @default(ABERTA)
+  prazo              DateTime            // 23:59:59 de Brasília, em UTC; <= criadaEm + 1 ano
+  lembreteEnviadoEm  DateTime?
+  encerradaEm        DateTime?
+  motivoEncerramento MotivoEncerramento?
+  excluidaEm         DateTime?           // exclusão lógica (RN-17)
+  versao             Int                 @default(0) // controle otimista
+  criadaEm           DateTime            @default(now())
+  atualizadaEm       DateTime            @updatedAt
+  empresa            Empresa             @relation(fields: [empresaId], references: [id])
+  areas              VagaArea[]
+  etapas             EtapaSelecao[]
+  candidaturas       Candidatura[]
+  @@index([status, prazo])
+}
+
+model VagaArea {
+  vagaId String       @db.Uuid
+  areaId String       @db.Uuid
+  vaga   Vaga         @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  area   AreaFormacao @relation(fields: [areaId], references: [id])
+  @@id([vagaId, areaId])
+  @@index([areaId])
+}
+
+model EtapaSelecao {
+  id           String        @id @default(uuid()) @db.Uuid
+  vagaId       String        @db.Uuid
+  nome         String
+  ordem        Int
+  vaga         Vaga          @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  candidaturas Candidatura[]
+  @@unique([vagaId, ordem])
+}
+
+model Candidatura {
+  id           String              @id @default(uuid()) @db.Uuid
+  alunoId      String              @db.Uuid
+  vagaId       String              @db.Uuid
+  status       StatusCandidatura   @default(EM_PROCESSO)
+  etapaAtualId String?             @db.Uuid
+  motivoCancelamento MotivoCancelamento?
+  criadaEm     DateTime            @default(now())
+  atualizadaEm DateTime            @updatedAt
+  aluno        Aluno               @relation(fields: [alunoId], references: [id])
+  vaga         Vaga                @relation(fields: [vagaId], references: [id])
+  etapaAtual   EtapaSelecao?       @relation(fields: [etapaAtualId], references: [id])
+  eventos      CandidaturaEvento[]
+  @@unique([alunoId, vagaId]) // RN-09
+  @@index([vagaId, status])
+}
+
+model CandidaturaEvento {
+  id            String             @id @default(uuid()) @db.Uuid
+  candidaturaId String             @db.Uuid
+  tipo          String             // CRIADA, ETAPA_ALTERADA, CANCELADA, REATIVADA, SELECIONADO, NAO_SELECIONADO
+  deStatus      StatusCandidatura?
+  paraStatus    StatusCandidatura?
+  etapaNome     String?
+  autorId       String?            @db.Uuid // null = sistema (job)
+  criadoEm      DateTime           @default(now())
+  candidatura   Candidatura        @relation(fields: [candidaturaId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Notificações e auditoria ----------
+model Notificacao {
+  id             String    @id @default(uuid()) @db.Uuid
+  usuarioId      String    @db.Uuid
+  tipo           String
+  titulo         String
+  mensagem       String
+  link           String?
+  lidaEm         DateTime?
+  emailEnviadoEm DateTime?
+  tentativas     Int       @default(0)
+  criadaEm       DateTime  @default(now())
+  usuario        Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  @@index([usuarioId, lidaEm])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  usuarioId  String?  @db.Uuid
+  acao       String   // ex.: EMPRESA_VIU_PERFIL, ADMIN_CRIOU_FACULDADE
+  entidade   String
+  entidadeId String
+  ip         String?
+  dados      Json?
+  criadoEm   DateTime @default(now())
+  @@index([entidade, entidadeId])
+}
