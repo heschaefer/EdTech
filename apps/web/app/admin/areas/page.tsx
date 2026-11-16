@@ -35,7 +35,7 @@ export default function AreasAdmin() {
           </Botao>
         </form>
       </Cartao>
-      <Cartao className="overflow-x-auto p-0">
+      <Cartao className="overflow-x-auto p-0" role="region" aria-label="Áreas de formação" tabIndex={0}>
         <table className="w-full text-left text-sm">
           <caption className="sr-only">Áreas de formação</caption>
           <thead className="bg-slate-50 text-slate-600">

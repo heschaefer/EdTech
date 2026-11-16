@@ -100,4 +100,38 @@ test.describe('Candidaturas do aluno', () => {
     await page.getByLabel('Filtrar por status').selectOption({ label: 'Não selecionado' });
     await expect(page.getByRole('row', { name: new RegExp(c.vaga.funcao) })).toBeVisible();
   });
+
+  test('ALU-11 o sino mostra as não lidas e cada notificação leva à tela do evento @aluno @smoke', async ({ page, api, entrarComo, sessao }) => {
+    const c = await api.cenario({ comCandidatura: true });
+    const emp = await sessao(c.empresa);
+    const { etapas } = await (await emp.get(`/empresa/vagas/${c.vaga.id}`)).json();
+    expect((await emp.patch(`/empresa/candidaturas/${c.candidaturaId}/etapa`, { etapaId: etapas[1].id })).ok()).toBeTruthy();
+    expect((await emp.post(`/empresa/candidaturas/${c.candidaturaId}/nao-selecionar`)).ok()).toBeTruthy();
+
+    await entrarComo(c.aluno);
+    await page.goto('/aluno/vagas');
+    await page.getByRole('link', { name: 'Notificações: 2 não lidas' }).click();
+    await semViolacoesGraves(page);
+    const itens = page.getByRole('list', { name: 'Notificações' }).getByRole('listitem');
+    await expect(itens).toHaveCount(2);
+    await expect(itens.first()).toContainText(`Candidatura encerrada: ${c.vaga.funcao}`);
+    await expect(itens.nth(1)).toContainText('avançou para a etapa Entrevista');
+
+    // Abrir marca como lida e leva à candidatura.
+    await itens.nth(1).getByRole('link', { name: /^Abrir/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/aluno/candidaturas/${c.candidaturaId}`));
+    await expect(page.getByRole('link', { name: 'Notificações: 1 não lida' })).toBeVisible();
+
+    await page.getByRole('link', { name: 'Notificações: 1 não lida' }).click();
+    await page.getByLabel('Só não lidas').check();
+    await expect(itens).toHaveCount(1);
+    await page.getByRole('button', { name: 'Marcar todas como lidas' }).click();
+    await expect(page.getByRole('status')).toHaveText('Todas as notificações foram marcadas como lidas.');
+    await expect(page.getByText('Nenhuma notificação não lida.')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Notificações', exact: true })).toBeVisible();
+
+    // RN-23: o mesmo evento chegou por e-mail.
+    await api.rodarJob('enviar-emails');
+    expect((await api.ultimoEmailPara(c.aluno.email, { assunto: /avançou/ })).Subject).toContain('Entrevista');
+  });
 });

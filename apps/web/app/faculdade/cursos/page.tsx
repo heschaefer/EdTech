@@ -37,7 +37,7 @@ export default function CursosFaculdade() {
           />
         </Cartao>
       )}
-      <Cartao className="overflow-x-auto p-0">
+      <Cartao className="overflow-x-auto p-0" role="region" aria-label="Cursos da faculdade" tabIndex={0}>
         <table className="w-full text-left text-sm">
           <caption className="sr-only">Cursos da faculdade</caption>
           <thead className="bg-slate-50 text-slate-600">

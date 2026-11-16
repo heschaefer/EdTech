@@ -20,6 +20,8 @@ export type Vaga = {
   criadaEm: string;
   areas: { id: string; nome: string }[];
   etapas: Etapa[];
+  encerradaEm?: string | null;
+  motivoEncerramento?: 'MANUAL' | 'AUTOMATICO' | null;
   totalCandidatos?: number;
   jaTeveCandidatura?: boolean;
 };

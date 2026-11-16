@@ -81,7 +81,7 @@ export default function FaculdadesAdmin() {
         <Campo rotulo="Buscar por nome, CNPJ ou domínio" value={busca} onChange={(e) => (setBusca(e.target.value), setPagina(1))} />
       </form>
 
-      <Cartao className="overflow-x-auto p-0">
+      <Cartao className="overflow-x-auto p-0" role="region" aria-label="Faculdades cadastradas" tabIndex={0}>
         <table className="w-full text-left text-sm">
           <caption className="sr-only">Faculdades cadastradas</caption>
           <thead className="bg-slate-50 text-slate-600">

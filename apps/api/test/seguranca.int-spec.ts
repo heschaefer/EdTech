@@ -45,6 +45,11 @@ describe('Segurança', () => {
       { metodo: 'get', url: `/empresa/candidaturas/${ID}`, permitidos: ['EMPRESA'] },
       { metodo: 'patch', url: `/empresa/candidaturas/${ID}/etapa`, permitidos: ['EMPRESA'] },
       { metodo: 'post', url: `/empresa/candidaturas/${ID}/nao-selecionar`, permitidos: ['EMPRESA'] },
+      { metodo: 'post', url: `/empresa/vagas/${ID}/encerrar`, permitidos: ['EMPRESA'] },
+      { metodo: 'get', url: '/notificacoes', permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
+      { metodo: 'get', url: '/notificacoes/nao-lidas', permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
+      { metodo: 'patch', url: '/notificacoes/lidas', permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
+      { metodo: 'patch', url: `/notificacoes/${ID}/lida`, permitidos: ['ALUNO', 'EMPRESA', 'FACULDADE', 'ADMIN'] },
     ];
     const clientes: Record<string, Cliente> = {};
 

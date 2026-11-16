@@ -95,7 +95,7 @@ export default function AlunosFaculdade() {
         </Cartao>
       )}
 
-      <Cartao className="overflow-x-auto p-0">
+      <Cartao className="overflow-x-auto p-0" role="region" aria-label="Alunos da faculdade" tabIndex={0}>
         <table className="w-full text-left text-sm">
           <caption className="sr-only">Alunos da faculdade</caption>
           <thead className="bg-slate-50 text-slate-600">

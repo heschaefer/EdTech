@@ -14,7 +14,8 @@ Stack: NestJS + Prisma (PostgreSQL) · Next.js 15 + Tailwind v4 · BullMQ (Redis
 | 3 · Aluno | ✅ ALU-01 (cadastro em 3 passos, CPF cifrado), ALU-02 a ALU-04 (perfil, senha, vínculo, currículo), FAC-06 (lista e desligamento), ALU-12 (troca de faculdade), RN-03 (limpeza de cadastros não verificados no worker) |
 | 4 · Empresa e vagas | ✅ EMP-01 e EMP-02 (cadastro com ViaCEP e perfil), ADM-04 e ADM-05 (aprovação e gestão de empresas), EMP-03 a EMP-07 (criar, editar com versão, pausar, excluir, prorrogar), ALU-05 e ALU-06 (lista com filtros na URL e detalhe). Adiantado da Fase 6: o outbox que envia por e-mail cada notificação in-app (RN-23) |
 | 5 · Candidaturas | ✅ ALU-07 e ALU-08 (candidatar-se, remover e reinscrever-se), ALU-09 e ALU-10 (em andamento, histórico e linha do tempo), EMP-08 a EMP-10 (lista de candidatos com contagem por etapa, perfil com currículo e auditoria, mover etapa, não selecionar), SEG-02 e SEG-09 |
-| 6 e 7 | Pendentes. Central de notificações, encerramento com devolutiva, jobs de prazo e endurecimento |
+| 6 · Ciclo de vida e notificações | ✅ ALU-11 (sino e central de notificações, com e-mail de cada evento pelo outbox), EMP-11 (encerramento com escolha dos selecionados e tela de resumo), JOB-01 a JOB-03 e EMP-12 (vencimento, lembrete e encerramento automático no worker a cada 5 min, com os atalhos "Prorrogar" e "Encerrar") |
+| 7 | Pendente. LGPD (exportação, exclusão), revisão OWASP, seed de demonstração e teste de carga |
 
 `pnpm spec:pendentes` lista quais IDs da spec ainda não têm teste.
 
@@ -102,5 +103,11 @@ docs/spec.md  A spec (lida pelo spec:check)
 - **Perfil do candidato (EMP-09):** cada leitura grava `EMPRESA_VIU_PERFIL` na auditoria. Quem não foi selecionado continua com o perfil visível à empresa (RN-19 só esconde a cancelada).
 - **Mover etapa (EMP-10):** pode avançar ou voltar; mover para a etapa atual responde 422. Mover e não selecionar valem com a vaga aberta, pausada ou com prazo expirado. A notificação do não selecionado usa a mensagem genérica da seção 5.
 - **Remover candidatura (ALU-08):** a empresa não é notificada; o candidato só some da lista dela.
+- **Encerramento (EMP-11):** `POST /empresa/vagas/:id/encerrar` recebe ids de **candidatura** em `selecionados`; id que não está em processo nesta vaga responde 422 sem mudar nada. A resposta traz `resultado: { selecionados, naoSelecionados }`. Candidaturas canceladas (inclusive "Aluno inativo") não recebem devolutiva. O botão "Encerrar vaga" aparece para qualquer vaga não encerrada; "Excluir" continua só para vaga sem candidaturas (D10).
+- **Concorrência no encerramento:** a vaga muda para ENCERRADA com UPDATE condicional e as candidaturas em processo são travadas (`FOR UPDATE`) antes da devolutiva; o JOB-02 usa a mesma rotina. Assim job e empresa nunca aplicam duas ações e nenhum aluno é avisado duas vezes; "não selecionar" ou "mover etapa" simultâneos recebem 409.
+- **Jobs de prazo:** o worker roda os três a cada 5 min, na ordem expirar → lembrete → encerrar. O lembrete (JOB-03) só sai entre 48 h e 72 h após o prazo: se o job atrasou além das 72 h, a vaga encerra direto. Prorrogar zera o lembrete.
+- **Notificações (ALU-11):** `GET /notificacoes` devolve também `naoLidas`; `GET /notificacoes/nao-lidas` é a contagem leve que o sino consulta a cada 30 s. A central fica em `/{papel}/notificacoes` para os quatro papéis, e o aluno inativo também a acessa. "Abrir" (e os atalhos) marcam a notificação como lida. Marcar de novo mantém a data da primeira leitura.
+- **Atalhos do EMP-12:** as notificações de prazo vencido e de lembrete levam a `/empresa/vagas/:id#prorrogar` (foco no campo do novo prazo) e a `/empresa/vagas/:id/encerrar`.
+- **Tabelas no celular:** a região com rolagem horizontal é focável (`role="region"`, `tabIndex=0`), exigência do axe (`scrollable-region-focusable`).
 - **E-mails:** templates HTML simples por enquanto; a migração para React Email (seção 10) fica pendente.
 - **spec:check:** lê os títulos dos testes direto dos arquivos (`it`, `test`, `describe`), sem precisar rodar as suítes.

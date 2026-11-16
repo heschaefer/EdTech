@@ -36,7 +36,7 @@ export default function VagasEmpresa() {
           )}
         </div>
       </div>
-      <Cartao className="overflow-x-auto p-0">
+      <Cartao className="overflow-x-auto p-0" role="region" aria-label="Vagas da empresa" tabIndex={0}>
         <table className="w-full text-left text-sm">
           <caption className="sr-only">Vagas da empresa</caption>
           <thead className="bg-slate-50 text-slate-600">

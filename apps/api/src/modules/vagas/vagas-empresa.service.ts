@@ -3,10 +3,11 @@ import type { AtualizarVagaInput, CriarVagaInput } from '@vagas/contracts';
 import type { Prisma, StatusVaga } from '@prisma/client';
 import { ClockService } from '../../common/clock.service';
 import { conflito, erroDeCampo, naoEncontrado, Problema, regraDeNegocio } from '../../common/problema';
-import { TransicaoInvalida } from '../../domain/erros';
+import { RegraViolada, TransicaoInvalida } from '../../domain/erros';
 import { origensVaga, transicaoVaga, TRANSICOES_VAGA, type AcaoVaga } from '../../domain/maquinas';
 import { MENSAGENS_PRAZO, prazoVencido, validarPrazo } from '../../domain/prazo';
 import { PrismaService, type Tx } from '../../prisma/prisma.service';
+import { EncerramentoService } from '../ciclo/encerramento.service';
 import { EmpresasService } from '../empresas/empresas.service';
 import { apresentarVaga, INCLUIR_VAGA } from './apresentacao';
 
@@ -29,6 +30,7 @@ export class VagasEmpresaService {
     private readonly prisma: PrismaService,
     private readonly clock: ClockService,
     private readonly empresas: EmpresasService,
+    private readonly encerramento: EncerramentoService,
   ) {}
 
   async listar(usuarioId: string, status?: StatusVaga) {
@@ -199,6 +201,31 @@ export class VagasEmpresaService {
     if (!prazo.ok) throw erroDeCampo('prazo', MENSAGENS_PRAZO[prazo.erro]);
     await this.transicionar(id, acao, para, { prazo: prazo.prazo, lembreteEnviadoEm: null });
     return this.obterDaEmpresa(empresa.id, id);
+  }
+
+  /**
+   * EMP-11 / RN-14: encerra de vez e manda a devolutiva. O UPDATE condicional da vaga vem primeiro
+   * (trava a linha e espera candidaturas em curso); depois as candidaturas em processo viram
+   * SELECIONADO ou NAO_SELECIONADO e cada aluno é notificado in-app e por e-mail.
+   */
+  async encerrar(usuarioId: string, id: string, selecionados: string[]) {
+    const { empresa, vaga } = await this.vagaDaEmpresa(usuarioId, id);
+    emConflito(() => transicaoVaga('encerrar', vaga.status));
+    const agora = this.clock.agora();
+    try {
+      const resultado = await this.prisma.$transaction(async (tx) => {
+        const { count } = await tx.vaga.updateMany({
+          where: { id, status: { in: origensVaga('encerrar') } },
+          data: { status: 'ENCERRADA', motivoEncerramento: 'MANUAL', encerradaEm: agora, versao: { increment: 1 } },
+        });
+        if (!count) throw conflito('A vaga mudou de estado enquanto você agia. Recarregue a página.');
+        return this.encerramento.devolutiva(tx, { vagaId: id, motivo: 'MANUAL', selecionados, autorId: usuarioId, agora });
+      });
+      return { ...(await this.obterDaEmpresa(empresa.id, id)), resultado };
+    } catch (e) {
+      if (e instanceof RegraViolada) throw regraDeNegocio(e.message, [{ campo: 'selecionados', mensagem: 'Selecione apenas candidatos em processo' }]);
+      throw e;
+    }
   }
 
   /** Áreas do catálogo e ativas; numa edição, as áreas que a vaga já tinha continuam aceitas. */

@@ -64,3 +64,9 @@ export const prazoVencido = (prazo: Date, agora: Date) => prazo.getTime() <= ago
 export const HORAS_LEMBRETE = 48;
 export const HORAS_ENCERRAMENTO_AUTOMATICO = 72;
 export const somarHoras = (d: Date, horas: number) => new Date(d.getTime() + horas * HORA);
+
+/** RN-24: instante exibido em Brasília, ex.: "13/11/2026 às 23:59". */
+export const dataHoraBrasilia = (d: Date) =>
+  new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    .format(d)
+    .replace(', ', ' às ');

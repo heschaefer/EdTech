@@ -89,4 +89,35 @@ test.describe('Candidatos da empresa @empresa', () => {
     await api.rodarJob('enviar-emails');
     expect((await api.ultimoEmailPara(c.aluno.email, { assunto: /encerrada/ })).Subject).toContain(c.vaga.funcao);
   });
+
+  test('EMP-11 encerra a vaga escolhendo os selecionados, revisa o resumo e todos recebem a devolutiva @smoke', async ({ page, api, entrarComo, sessao }) => {
+    const a = await api.cenario({ comCandidatura: true });
+    const b = await api.cenario();
+    const alunoB = await sessao(b.aluno);
+    expect((await alunoB.post(`/vagas/${a.vaga.id}/candidaturas`)).status()).toBe(201);
+
+    await entrarComo(a.empresa);
+    await page.goto(`/empresa/vagas/${a.vaga.id}`);
+    await page.getByRole('link', { name: 'Encerrar vaga' }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Encerrar vaga');
+    await page.getByRole('checkbox', { name: `Selecionar ${b.aluno.nome}` }).check();
+    await page.getByRole('button', { name: 'Revisar encerramento' }).click();
+
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Resumo do encerramento');
+    await semViolacoesGraves(page);
+    await expect(page.getByRole('list', { name: 'Selecionados', exact: true })).toHaveText(b.aluno.nome);
+    await expect(page.getByRole('list', { name: 'Não selecionados' })).toHaveText(a.aluno.nome);
+    await page.getByRole('button', { name: 'Confirmar encerramento' }).click();
+
+    await expect(page).toHaveURL(new RegExp(`/empresa/vagas/${a.vaga.id}\\?encerrada=1`));
+    await expect(page.getByRole('status').filter({ hasText: 'Vaga encerrada' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Encerrar vaga' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Editar' })).toHaveCount(0);
+
+    await api.rodarJob('enviar-emails');
+    expect((await api.ultimoEmailPara(b.aluno.email, { assunto: /selecionado/ })).Subject).toContain(a.vaga.funcao);
+    expect((await api.ultimoEmailPara(a.aluno.email, { assunto: /encerrada/ })).Subject).toContain(a.vaga.funcao);
+    const historicoB = await (await alunoB.get('/alunos/me/candidaturas?aba=historico')).json();
+    expect(historicoB.data[0]).toMatchObject({ status: 'SELECIONADO' });
+  });
 });

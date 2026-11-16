@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { atualizarVagaSchema, criarVagaSchema, filtroVagasEmpresaSchema, filtroVagasSchema, prorrogarVagaSchema } from '@vagas/contracts';
+import { atualizarVagaSchema, criarVagaSchema, encerrarVagaSchema, filtroVagasEmpresaSchema, filtroVagasSchema, prorrogarVagaSchema } from '@vagas/contracts';
 import { createZodDto } from 'nestjs-zod';
 import { Roles, UsuarioAtual } from '../../common/decorators';
 import type { UsuarioSessao } from '../../common/sessao';
@@ -9,6 +9,7 @@ import { VagasEmpresaService } from './vagas-empresa.service';
 class CriarDto extends createZodDto(criarVagaSchema) {}
 class AtualizarDto extends createZodDto(atualizarVagaSchema) {}
 class ProrrogarDto extends createZodDto(prorrogarVagaSchema) {}
+class EncerrarDto extends createZodDto(encerrarVagaSchema) {}
 class FiltroEmpresaDto extends createZodDto(filtroVagasEmpresaSchema) {}
 class FiltroAlunoDto extends createZodDto(filtroVagasSchema) {}
 
@@ -66,6 +67,13 @@ export class VagasEmpresaController {
   @HttpCode(200)
   prorrogar(@UsuarioAtual() u: UsuarioSessao, @Id() id: string, @Body() dto: ProrrogarDto) {
     return this.vagas.prorrogar(u.id, id, dto.prazo);
+  }
+
+  /** EMP-11 */
+  @Post(':id/encerrar')
+  @HttpCode(200)
+  encerrar(@UsuarioAtual() u: UsuarioSessao, @Id() id: string, @Body() dto: EncerrarDto) {
+    return this.vagas.encerrar(u.id, id, dto.selecionados);
   }
 }
 

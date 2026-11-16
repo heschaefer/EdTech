@@ -90,3 +90,7 @@ export const filtroVagasEmpresaSchema = z
   .object({ status: z.enum(['ABERTA', 'PAUSADA', 'PRAZO_EXPIRADO', 'ENCERRADA']).optional() })
   .strict();
 
+
+/** EMP-11: zero ou mais selecionados entre os candidatos em processo (ids de candidatura). */
+export const encerrarVagaSchema = z.object({ selecionados: z.array(uuid).max(1000).default([]) }).strict();
+export type EncerrarVagaInput = z.infer<typeof encerrarVagaSchema>;

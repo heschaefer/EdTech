@@ -1,4 +1,4 @@
-import { dataCivil, fimDoDia, prazoVencido, somarAnos, somarHoras, validarPrazo } from './prazo';
+import { dataCivil, dataHoraBrasilia, fimDoDia, prazoVencido, somarAnos, somarHoras, validarPrazo } from './prazo';
 
 describe('Prazo da vaga', () => {
   it('RN-11 D15 o prazo vale até 23:59:59 de Brasília (02:59:59 UTC do dia seguinte)', () => {
@@ -37,5 +37,11 @@ describe('Prazo da vaga', () => {
 
   it('RN-11 data mal formatada lança erro', () => {
     expect(() => fimDoDia('10/12/2026')).toThrow();
+  });
+});
+
+describe('dataHoraBrasilia', () => {
+  it('RN-24 exibe em America/Sao_Paulo', () => {
+    expect(dataHoraBrasilia(new Date('2026-11-13T02:59:59Z'))).toBe('12/11/2026 às 23:59');
   });
 });

@@ -1,7 +1,8 @@
-import { Body, Controller, HttpCode, NotImplementedException, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import { z } from 'zod';
 import { Public } from '../common/decorators';
+import { PrazosService } from '../modules/ciclo/prazos.service';
 import { OutboxService } from '../modules/notificacoes/outbox.service';
 import { TestingService, type OpcoesCenario } from './testing.service';
 
@@ -24,6 +25,7 @@ export class TestingController {
   constructor(
     private readonly testing: TestingService,
     private readonly outbox: OutboxService,
+    private readonly prazos: PrazosService,
   ) {}
 
   @Post('reset')
@@ -48,12 +50,13 @@ export class TestingController {
     return this.testing.moverPrazo(id, z.coerce.date().parse(body?.prazo));
   }
 
+  /** Roda um job na hora; com `vagaId`, só para essa vaga, sem afetar testes paralelos (seção 9). */
   @Post('jobs/:nome')
   @HttpCode(200)
-  async job(@Param('nome') nome: string) {
+  async job(@Param('nome') nome: string, @Body() body: { vagaId?: string }) {
     const job = z.enum(JOBS).parse(nome);
     if (job === 'enviar-emails') return { processados: await this.outbox.processar() };
-    // Os jobs de prazo entram na Fase 6.
-    throw new NotImplementedException(`Job ${nome} ainda não implementado (Fase 6)`);
+    const vagaId = z.string().uuid().optional().parse(body?.vagaId ?? undefined);
+    return { processados: await this.prazos.rodar(job, vagaId) };
   }
 }

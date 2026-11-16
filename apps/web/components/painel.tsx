@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import type { Me } from '@vagas/contracts';
+import { Sino } from '@/components/notificacoes';
 import { api, sair } from '@/lib/api';
 
 export function useMe() {
@@ -35,6 +36,7 @@ export function Painel({ titulo, links, children }: { titulo: string; links: { h
             </nav>
           </div>
           <div className="flex items-center gap-3 text-sm">
+            {me && <Sino papel={me.papel} />}
             {me && <span className="text-slate-600">{me.nome}</span>}
             <button onClick={sair} className="rounded-md px-3 py-1 text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
               Sair

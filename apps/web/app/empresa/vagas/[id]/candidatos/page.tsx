@@ -111,7 +111,7 @@ export default function CandidatosVaga({ params }: { params: Promise<{ id: strin
         </form>
       </Cartao>
 
-      <Cartao className="overflow-x-auto p-0">
+      <Cartao className="overflow-x-auto p-0" role="region" aria-label="Candidatos da vaga" tabIndex={0}>
         <table className="w-full text-left text-sm">
           <caption className="sr-only">Candidatos da vaga</caption>
           <thead className="bg-slate-50 text-slate-600">
